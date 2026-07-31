@@ -1,0 +1,21 @@
+{
+	"id": "plato",
+	"title": "Plato Corpus",
+	"author": "Plato",
+	"language": "grc",
+	"sourceRepository": "PerseusDL/canonical-greekLit",
+	"sourceCommit": "9a424880e535b7b24258feda413fa37580f8971f",
+	"license": "CC-BY-SA-4.0",
+	"works": [
+		{
+			"id": "republic",
+			"urn": "urn:cts:greekLit:tlg0059.tlg030.perseus-grc2",
+			"title": "Republic",
+			"titleGreek": "Πολιτεία",
+			"author": "Plato",
+			"language": "grc",
+			"editor": "John Burnet",
+			"fileName": "republic.json"
+		}
+	]
+}

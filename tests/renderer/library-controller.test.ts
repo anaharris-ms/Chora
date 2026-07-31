@@ -1,0 +1,130 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ErrorManager } from "../../src/renderer/core/diagnostics/renderer-error-manager.js";
+import { ChoraEventBus } from "../../src/renderer/core/events/chora-event-bus.js";
+import type { ChoraEvents } from "../../src/renderer/core/events/chora-events.js";
+import { LibraryController } from "../../src/renderer/library/library-controller.js";
+import { LibraryGateway } from "../../src/renderer/library/library-gateway.js";
+import { LibraryStore } from "../../src/renderer/library/library-store.js";
+import type { LibraryText, LibraryTextSummary, SourceNotice } from "../../src/shared/library/library-types.js";
+
+const summary: LibraryTextSummary = {
+	id: "republic",
+	urn: null,
+	title: "Republic",
+	titleGreek: null,
+	author: "Plato",
+	language: "grc",
+	editor: null,
+	fileName: "republic.json"
+};
+
+const document: LibraryText = {
+	...summary,
+	edition: { editor: null, title: null, volume: null, publisher: null, publicationPlace: null, publicationDate: null },
+	provenance: { repository: "PerseusDL", commit: "test", sourceFile: "republic.xml", license: "CC" },
+	segments: [
+		{ key: "s1", locator: { scheme: "Stephanus", value: "327a" }, speaker: null, text: "abcdef", blockKind: "narration" },
+		{ key: "s2", locator: { scheme: "Stephanus", value: "327b" }, speaker: null, text: "ghijkl", blockKind: "narration" }
+	]
+};
+
+const sourceNotice: SourceNotice = {
+	source: "PerseusDL",
+	editor: null,
+	editionTitle: null,
+	repository: "PerseusDL",
+	license: "CC"
+};
+
+describe("LibraryController", function LibraryControllerTests()
+{
+	let events: ChoraEventBus<ChoraEvents>;
+	let controller: LibraryController;
+	let store: LibraryStore;
+
+	beforeEach(() =>
+	{
+		events = new ChoraEventBus<ChoraEvents>();
+		const errors = new ErrorManager(events);
+		vi.stubGlobal("window", {
+			chora: {
+				ListLibraryTexts: vi.fn(async () => [summary]),
+				LoadLibraryText: vi.fn(async () => document),
+				GetSourceNotice: vi.fn(async () => sourceNotice)
+			}
+		});
+		store = new LibraryStore();
+		controller = new LibraryController(events, errors, store, new LibraryGateway());
+	});
+
+	it("loads the library and publishes the opened document with its source notice", async function OpensInitialDocument()
+	{
+		let openedDocument: LibraryText | null = null;
+		let openedNotice: SourceNotice | null = null;
+		events.Subscribe("library.text-opened", (event) =>
+		{
+			openedDocument = event.text;
+			openedNotice = event.sourceNotice;
+		});
+
+		await controller.StartAsync();
+
+		expect(openedDocument).toEqual(document);
+		expect(openedNotice).toEqual(sourceNotice);
+		expect(store.GetSourceNotice()).toEqual(sourceNotice);
+		expect(store.GetSnapshot().texts).toEqual([summary]);
+	});
+
+	it("canonicalizes selections and suppresses duplicate selection events", async function CanonicalizesSelection()
+	{
+		let changes = 0;
+		await controller.StartAsync();
+		events.Subscribe("library.selection-changed", () =>
+		{
+			changes += 1;
+		});
+		const browserSelection = {
+			documentId: "republic",
+			start: { segmentKey: "s1", offset: 2 },
+			end: { segmentKey: "s2", offset: 3 },
+			selectedText: "browser formatting is ignored",
+			locatorStart: null,
+			locatorEnd: null
+		};
+
+		controller.SetSelection(browserSelection);
+		controller.SetSelection(browserSelection);
+
+		expect(store.GetSelection()?.selectedText).toBe("cdef\nghi");
+		expect(store.GetSelection()?.locatorStart?.value).toBe("327a");
+		expect(store.GetSelection()?.locatorEnd?.value).toBe("327b");
+		expect(changes).toBe(1);
+	});
+
+	it("rejects selections belonging to another document", async function RejectsWrongDocument()
+	{
+		vi.spyOn(console, "debug").mockImplementation(() => undefined);
+		await controller.StartAsync();
+
+		controller.SetSelection({ documentId: "other", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 2 }, selectedText: "ab", locatorStart: null, locatorEnd: null });
+
+		expect(store.GetSelection()).toBeNull();
+		expect(console.debug).toHaveBeenCalledWith("[Chora][DEBUG][LibraryController]", "Ignored an invalid browser selection.", expect.any(Error));
+	});
+
+	it("tracks the visible passage as chat context when no text is selected", async function TracksReadingFocus()
+	{
+		let focusedSegment = "";
+		events.Subscribe("library.focus-changed", (event) =>
+		{
+			focusedSegment = event.segmentKey;
+		});
+		await controller.StartAsync();
+
+		expect(store.GetContextSelection()?.selectedText).toBe("abcdef");
+		controller.SetFocusSegment("s2");
+
+		expect(store.GetContextSelection()?.selectedText).toBe("ghijkl");
+		expect(focusedSegment).toBe("s2");
+	});
+});

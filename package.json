@@ -1,0 +1,43 @@
+{
+	"name": "chora",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Chora — Where texts dream.",
+	"main": ".vite/build/src/main/main.js",
+	"scripts": {
+		"start": "npm run dev:mock",
+		"start:app": "npm run build && electron-forge start",
+		"dev:mock": "node scripts/start-mode.mjs mock",
+		"dev:kimi": "node scripts/start-mode.mjs kimi",
+		"package": "npm run build && electron-forge package",
+		"make": "npm run build && electron-forge make",
+		"build": "npm run build:main && npm run build:preload && npm run build:renderer",
+		"build:main": "tsc -p tsconfig.main.json",
+		"build:preload": "node scripts/build-preload.mjs",
+		"build:renderer": "node scripts/build-renderer.mjs",
+		"typecheck": "tsc -p tsconfig.main.json --noEmit",
+		"test": "vitest run",
+		"corpus:fetch": "ts-node --project tsconfig.scripts.json scripts/corpus/fetch-perseus-plato.ts",
+		"corpus:build": "ts-node --project tsconfig.scripts.json scripts/corpus/build-perseus-plato.ts",
+		"corpus:verify": "ts-node --project tsconfig.scripts.json scripts/corpus/verify-perseus-plato.ts",
+		"corpus:update": "ts-node --project tsconfig.scripts.json scripts/corpus/update-perseus-plato.ts"
+	},
+	"dependencies": {
+		"electron-squirrel-startup": "^1.0.1",
+		"gray-matter": "^4.0.3"
+	},
+	"devDependencies": {
+		"@electron-forge/cli": "^7.6.0",
+		"@electron-forge/maker-deb": "^7.6.0",
+		"@electron-forge/maker-rpm": "^7.6.0",
+		"@electron-forge/maker-squirrel": "^7.6.0",
+		"@electron-forge/maker-zip": "^7.6.0",
+		"@types/node": "^24.0.0",
+		"@xmldom/xmldom": "^0.9.8",
+		"electron": "^37.0.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.9.0",
+		"vite": "^7.0.0",
+		"vitest": "^3.2.0"
+	}
+}

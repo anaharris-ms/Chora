@@ -1,0 +1,20 @@
+export const IPC_CHANNELS = {
+	listLibraryTexts: "chora:list-library-texts",
+	loadLibraryText: "chora:load-library-text",
+	selectLibraryText: "chora:select-library-text",
+	externalTextLoaded: "chora:external-text-loaded",
+	showSelectionContextMenu: "chora:show-selection-context-menu",
+	showDreamSourceContextMenu: "chora:show-dream-source-context-menu",
+	copySelectedText: "chora:copy-selected-text",
+	lookUpWord: "chora:look-up-word",
+	startChat: "chora:start-chat",
+	continueChat: "chora:continue-chat",
+	getChatTools: "chora:get-chat-tools",
+	chatDelta: "chora:chat-delta",
+	getConfiguredProvider: "chora:get-configured-provider",
+	getProviderOptions: "chora:get-provider-options",
+	getSourceNotice: "chora:get-source-notice",
+	saveDream: "chora:save-dream",
+	deleteDream: "chora:delete-dream",
+	listDreams: "chora:list-dreams"
+} as const;

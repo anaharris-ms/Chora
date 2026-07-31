@@ -1,0 +1,806 @@
+:root {
+	color-scheme: dark;
+	--app-background: #101720;
+	--panel-background: #16202d;
+	--panel-border: #29394d;
+	--app-text: #eef2f7;
+	--muted-text: #a9b6c6;
+	--accent: #d7b56d;
+	--accent-soft: rgba(215, 181, 109, 0.18);
+	--danger: #f0a4a4;
+}
+
+html,
+body {
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	background: var(--app-background);
+	color: var(--app-text);
+	font-family: "Palatino Linotype", "Cambria", "Times New Roman", serif;
+}
+
+body {
+	overflow: hidden;
+}
+
+.application-error {
+	position: fixed;
+	top: 0.75rem;
+	left: 50%;
+	z-index: 20;
+	max-width: min(36rem, calc(100vw - 2rem));
+	padding: 0.65rem 0.85rem;
+	transform: translateX(-50%);
+	border: 1px solid var(--danger);
+	border-radius: 0.5rem;
+	background: #2a1820;
+	color: var(--app-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.78rem;
+}
+
+button,
+input,
+textarea,
+select {
+	font: inherit;
+}
+
+.shell {
+	display: grid;
+	grid-template-columns: minmax(280px, 24vw) minmax(0, 1fr) minmax(280px, 22vw);
+	height: 100vh;
+}
+
+.shell.dream-open {
+	grid-template-columns: minmax(280px, 24vw) minmax(0, 1fr) minmax(480px, 38vw);
+}
+
+.right-panel {
+	display: flex;
+	flex-direction: column;
+	background: var(--panel-background);
+	overflow: hidden;
+	padding: 0;
+	border-left: 1px solid var(--panel-border);
+	border-right: none;
+}
+
+.left-panel {
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+	border-right: 1px solid var(--panel-border);
+	background: var(--panel-background);
+}
+
+.center-panel {
+	background: #fbfaf7;
+	overflow: auto;
+}
+
+#readingPane {
+	box-sizing: border-box;
+	min-height: 100%;
+	padding: 2.25rem 2rem 4rem;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
+}
+
+.work-header,
+.text-body,
+.source-notice {
+	max-width: 40rem;
+	margin-right: auto;
+	margin-left: auto;
+}
+
+.work-header {
+	margin-bottom: 1rem;
+}
+
+.work-header h1 {
+	margin: 0;
+	font-size: 1.6rem;
+	font-weight: 600;
+}
+
+.work-header-greek {
+	margin: 0.2rem 0 0;
+	color: color-mix(in srgb, var(--reader-foreground) 60%, var(--reader-background));
+}
+
+.reader-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.7rem;
+	box-sizing: border-box;
+	max-width: 40rem;
+	margin: 0 auto 1.75rem;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 18%, var(--reader-background));
+	border-radius: 0.7rem;
+	background: var(--reader-background);
+	box-shadow: 0 8px 18px color-mix(in srgb, var(--reader-foreground) 9%, transparent);
+}
+
+.reader-control {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--reader-foreground);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+}
+
+.reader-control select {
+	padding: 0.28rem 1.8rem 0.28rem 0.45rem;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 25%, var(--reader-background));
+	border-radius: 0.35rem;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
+}
+
+.reader-book-control {
+	margin-right: auto;
+}
+
+.reader-button {
+	min-width: 2.25rem;
+	padding: 0.3rem 0.45rem;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 25%, var(--reader-background));
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--reader-foreground);
+	cursor: pointer;
+}
+
+.reader-font-size {
+	min-width: 2.55rem;
+	text-align: center;
+}
+
+.source-notice {
+	margin-bottom: 1.25rem;
+	color: color-mix(in srgb, var(--reader-foreground) 65%, var(--reader-background));
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.78rem;
+}
+
+.source-notice summary {
+	cursor: pointer;
+}
+
+.source-details {
+	margin-top: 0.5rem;
+	padding-left: 0.8rem;
+	border-left: 2px solid color-mix(in srgb, var(--reader-foreground) 20%, var(--reader-background));
+}
+
+.text-body {
+	font-size: var(--reader-font-size);
+	line-height: 1.56;
+}
+
+.book-heading {
+	margin: 2.5em 0 1.5em;
+	color: color-mix(in srgb, var(--reader-foreground) 75%, var(--reader-background));
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.85em;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+.text-segment {
+	margin: 0 auto 0.48em;
+	content-visibility: auto;
+	contain-intrinsic-size: auto 1.5em;
+}
+
+.text-segment.has-locator {
+	margin-top: 1.35em;
+}
+
+.source-locator {
+	display: block;
+	user-select: none;
+	color: color-mix(in srgb, var(--reader-foreground) 43%, var(--reader-background));
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.68em;
+	font-style: italic;
+	line-height: 1.25;
+	text-align: center;
+}
+
+.source-locator {
+	margin-bottom: 0.45em;
+}
+
+.speaker-label {
+	display: block;
+	margin-bottom: 0.14em;
+	user-select: none;
+	color: color-mix(in srgb, var(--reader-foreground) 72%, var(--reader-background));
+	font-weight: 700;
+}
+
+.segment-text {
+	white-space: pre-wrap;
+}
+
+.dream-panel {
+	box-sizing: border-box;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	overflow: auto;
+	padding: 1.4rem clamp(1.25rem, 3vw, 3rem);
+	background: var(--panel-background);
+	font-size: var(--dream-font-size);
+}
+
+.dream-panel.dream-font-literary {
+	font-family: "Palatino Linotype", "Cambria", "Times New Roman", serif;
+}
+
+.dream-panel.dream-font-serif {
+	font-family: Georgia, "Times New Roman", serif;
+}
+
+.dream-panel.dream-font-sans {
+	font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.dream-panel.dream-font-mono {
+	font-family: Consolas, "Courier New", monospace;
+}
+
+.dream-catalogue {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding: 0.7rem 1rem;
+}
+
+.dream-catalogue h3 {
+	margin: 0 0 0.45rem;
+	font-size: 0.8rem;
+}
+
+.catalogue-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.catalogue-header .dream-action-link {
+	margin: 0 0 0.45rem;
+}
+
+.catalogue-group {
+	margin: 0.7rem 0 1rem;
+}
+
+.catalogue-group h4 {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	margin: 0;
+	padding: 0.45rem 0 0.3rem;
+	background: var(--panel-background);
+	color: var(--accent);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.7rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.catalogue-item {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: 0.8rem;
+	width: 100%;
+	padding: 0.38rem 0;
+	border: 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	background: transparent;
+	color: var(--app-text);
+	text-align: left;
+	cursor: pointer;
+}
+
+.catalogue-item strong,
+.catalogue-item span {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.catalogue-item strong {
+	font-size: 0.78rem;
+}
+
+.catalogue-item span {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.68rem;
+}
+
+.catalogue-location {
+	max-width: 12rem;
+}
+
+.dream-header,
+.dream-save {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.dream-header {
+	position: sticky;
+	top: -1.4rem;
+	z-index: 3;
+	margin-bottom: 1rem;
+	padding: 0.65rem 0;
+	background: var(--panel-background);
+}
+
+.dream-toolbar-status {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.68rem;
+}
+
+.dream-delete-link {
+	margin-left: auto;
+	color: var(--danger);
+}
+
+.dream-header h2,
+.dream-section h3 {
+	margin: 0;
+}
+
+.dream-header h2 {
+	font-size: 1.15rem;
+}
+
+.dream-toolbar {
+	display: flex;
+	align-items: end;
+	gap: 0.35rem;
+}
+
+.toolbar-field {
+	display: grid;
+	gap: 0.12rem;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.58rem;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.toolbar-field select {
+	max-width: 7rem;
+	height: 1.85rem;
+	padding: 0 0.35rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.35rem;
+	background: #0d141d;
+	color: var(--app-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.7rem;
+}
+
+.dream-icon-button {
+	display: grid;
+	place-items: center;
+	width: 1.85rem;
+	height: 1.85rem;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--muted-text);
+	cursor: pointer;
+}
+
+.dream-icon-button:hover,
+.dream-icon-button:focus-visible {
+	border-color: var(--panel-border);
+	color: var(--app-text);
+}
+
+.dream-icon-button svg {
+	width: 1rem;
+	height: 1rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.7;
+}
+
+.dream-section {
+	margin-bottom: 1.15rem;
+}
+
+.dream-section h3,
+.dream-field > span {
+	display: block;
+	margin-bottom: 0.4rem;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.dream-source-meta,
+.dream-help,
+.dream-empty {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+}
+
+.dream-help {
+	margin: 0 0 0.55rem;
+}
+
+.dream-source {
+	max-height: 13rem;
+	overflow: auto;
+	margin: 0.5rem 0 0;
+	padding: 0.75rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.6rem;
+	background: #0d141d;
+	white-space: pre-wrap;
+	line-height: 1.55;
+}
+
+.dream-action-link {
+	align-self: flex-start;
+	margin: 0.45rem 0 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--accent);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+	cursor: pointer;
+}
+
+.signal-list {
+	display: grid;
+	gap: 0.45rem;
+}
+
+.signal-item {
+	border: 1px solid var(--panel-border);
+	border-radius: 0.55rem;
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.signal-row {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.signal-heading {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 0.55rem;
+	padding: 0.55rem 0.65rem;
+}
+
+.signal-heading span {
+	margin-left: auto;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.72rem;
+}
+
+.signal-description {
+	box-sizing: border-box;
+	width: calc(100% - 1.3rem);
+	min-height: 4.5rem;
+	margin: 0 0.65rem 0.65rem;
+	resize: none;
+	overflow: hidden;
+	padding: 0.65rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.45rem;
+	background: #0d141d;
+	color: var(--app-text);
+	font: inherit;
+	line-height: 1.5;
+	field-sizing: content;
+}
+
+.signal-remove {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--muted-text);
+	cursor: pointer;
+}
+
+.dream-field {
+	display: block;
+	margin-bottom: 1rem;
+}
+
+.dream-field textarea {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 6.5rem;
+	resize: none;
+	overflow: hidden;
+	padding: 0.65rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.6rem;
+	outline: 0;
+	background: #0d141d;
+	color: var(--app-text);
+	font: inherit;
+	line-height: 1.5;
+	field-sizing: content;
+}
+
+.dream-field input {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.6rem;
+	outline: 0;
+	background: #0d141d;
+	color: var(--app-text);
+	font: inherit;
+}
+
+.dream-exegesis {
+	flex: 0 0 auto;
+	min-height: 0;
+}
+
+.dream-exegesis textarea {
+	min-height: 18rem;
+}
+
+.dream-save {
+	justify-content: flex-start;
+	gap: 1rem;
+	padding: 0.8rem 0 0.2rem;
+}
+
+.field-optional {
+	font-weight: 400;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.chat-panel {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+	padding: 0.9rem 1rem 1rem;
+}
+
+.chat-error {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+	line-height: 1.45;
+}
+
+.chat-transcript {
+	display: grid;
+	align-content: start;
+	flex: 1;
+	gap: 0.7rem;
+	min-height: 0;
+	margin-top: 0;
+	padding: 0.1rem 0.1rem 1rem;
+	overflow: auto;
+}
+
+.chat-error {
+	padding: 0.7rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.55rem;
+	background: rgba(255, 255, 255, 0.035);
+}
+
+.chat-message {
+	max-width: 92%;
+	padding: 0.2rem 0.1rem;
+}
+
+.chat-message.user {
+	justify-self: end;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.85rem 0.85rem 0.2rem;
+	background: #202d3d;
+}
+
+.chat-message.assistant {
+	justify-self: start;
+}
+
+.chat-message.pending .chat-text {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.78rem;
+	font-style: italic;
+}
+
+.chat-message.tool {
+	width: calc(100% - 1.4rem);
+	padding: 0.65rem 0.7rem;
+	border: 1px solid var(--accent);
+	border-radius: 0.55rem;
+	background: var(--accent-soft);
+}
+
+.tool-result-label {
+	display: block;
+	margin-bottom: 0.35rem;
+	color: var(--accent);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.chat-text {
+	white-space: pre-wrap;
+	line-height: 1.5;
+}
+
+.chat-error {
+	margin-bottom: 0.65rem;
+	color: var(--danger);
+}
+
+.chat-form {
+	position: relative;
+	z-index: 5;
+	display: grid;
+	grid-template-rows: auto auto;
+	gap: 0.55rem;
+	padding: 0.55rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.75rem;
+	background: #0d141d;
+	pointer-events: auto;
+}
+
+.chat-form textarea {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 4rem;
+	max-height: 8rem;
+	resize: vertical;
+	padding: 0.35rem 0.2rem;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--app-text);
+}
+
+.dream-interaction-select {
+	width: 100%;
+	padding: 0.35rem 0.45rem;
+	border: 0;
+	border-bottom: 1px solid var(--panel-border);
+	outline: 0;
+	background: transparent;
+	color: var(--accent);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.72rem;
+}
+
+.chat-form button {
+	margin: 0;
+}
+
+.chat-composer-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.45rem;
+}
+
+.composer-spacer {
+	flex: 1;
+}
+
+.chat-composer-footer select {
+	flex: 1 1 5.5rem;
+	min-width: 0;
+	min-height: 1.9rem;
+	max-width: 7.5rem;
+	padding: 0.25rem 0.35rem;
+	border: 0;
+	border-radius: 0.35rem;
+	outline: 0;
+	background: transparent;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.74rem;
+}
+
+.composer-button {
+	min-width: 1.9rem;
+	height: 1.9rem;
+	padding: 0 0.45rem;
+	border: 0;
+	border-radius: 0.45rem;
+	background: transparent;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 1.25rem;
+	cursor: pointer;
+}
+
+.send-button {
+	margin-left: auto;
+	background: #485567;
+	color: #ffffff;
+	font-size: 0.72rem;
+	pointer-events: auto;
+}
+
+.send-button:disabled {
+	opacity: 0.45;
+	cursor: wait;
+}
+
+@media (max-width: 1000px) {
+	.shell {
+		grid-template-columns: minmax(220px, 27vw) minmax(300px, 1fr) minmax(240px, 29vw);
+	}
+
+	.shell.dream-open {
+		grid-template-columns: minmax(220px, 25vw) minmax(280px, 1fr) minmax(280px, 32vw);
+	}
+}
+
+@media (max-width: 650px) {
+	.shell {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	#readingPane {
+		padding: 1.4rem 1rem 3rem;
+	}
+
+	.reader-toolbar {
+		top: -1.4rem;
+		flex-wrap: wrap;
+		justify-content: flex-start;
+	}
+}

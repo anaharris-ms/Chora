@@ -1,0 +1,12 @@
+{
+	"repository": "PerseusDL/canonical-greekLit",
+	"commit": "9a424880e535b7b24258feda413fa37580f8971f",
+	"text_group": "tlg0059",
+	"importedWorks": [
+		"republic"
+	],
+	"omittedWorks": [],
+	"notes": [
+		"Imported from the pinned Perseus XML source."
+	]
+}

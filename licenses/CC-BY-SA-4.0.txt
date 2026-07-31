@@ -1,0 +1,4 @@
+Creative Commons Attribution-ShareAlike 4.0 International
+
+This repository includes a starter notice for development purposes.
+For the official license text, use the Creative Commons CC BY-SA 4.0 license terms.
