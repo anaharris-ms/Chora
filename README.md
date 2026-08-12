@@ -34,17 +34,7 @@ Chat mode is inferred rather than selected:
 | Document visible | `TEXT` | Passage nearest the viewport focus, with surrounding source |
 | No document | `FREE` | No passage context |
 
-Conversation history is preserved for the application session. Model prompts live in `Prompts/` and are loaded by the main process.
-
-When a Dream is open, the reader chooses how the model should meet it:
-
-| Dream interaction | Model behavior |
-|---|---|
-| **Echo** | Mirrors only the symbols and relations the reader has already identified |
-| **Socratic Nudge** | Returns attention to one exact linguistic or dramatic detail in the source passage |
-| **Counter-Weight** | Offers one passage-bound detail that creates friction or complication |
-
-These are reader-selected interaction stances inside inferred `DREAM` context; they do not replace the automatic `DREAM`, `TEXT`, and `FREE` context modes.
+Completed conversations are automatically saved under `Documents\Chora\Conversations` and can be reopened from Chat history. Model prompts live in `Prompts/` and are loaded by the main process.
 
 ## Local Dream library
 
@@ -88,6 +78,32 @@ KIMI_MAX_COMPLETION_TOKENS=3000
 ```
 
 Never commit `.env.local` or provider credentials.
+
+### VS Code Copilot Relay
+
+The Relay provider uses the GitHub Copilot session already active in a local VS Code Extension Development Host. Configure the same non-empty secret in both places:
+
+```json
+{
+	"choraCopilotRelay.sharedSecret": "choose-a-long-local-secret"
+}
+```
+
+Add the matching Chora values to `.env.local`:
+
+```text
+COPILOT_RELAY_SHARED_SECRET=choose-a-long-local-secret
+COPILOT_RELAY_MODEL_FAMILY=claude-sonnet-4.5
+COPILOT_RELAY_PORT=4319
+```
+
+Start Chora's `Chora Copilot Relay: Launch Extension Host` debug profile, then run:
+
+```bash
+npm run dev:relay
+```
+
+When the Relay is running, the model selector lists every Copilot model family available in that VS Code session. `COPILOT_RELAY_MODEL_FAMILY` is only the fallback used while the Relay catalogue is unavailable. A selected model is saved with its conversation and cannot change mid-conversation. The Relay is loopback-only and rejects requests without the shared secret.
 
 Verification commands:
 

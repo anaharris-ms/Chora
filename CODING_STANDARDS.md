@@ -1,85 +1,83 @@
 # Coding Standards
 
-This repository uses a strict, architecture-first C# style.
+This repository uses a strict, architecture-first C#-style discipline, applied to TypeScript.
 
 ## Core Principles
 
-- Use strongly typed C# code.
-- Prefer object-oriented design with classes, interfaces, and services.
+- Use strongly typed TypeScript. Avoid `any`; prefer explicit interfaces and types.
+- Prefer object-oriented design with classes and interfaces for stateful or multi-step behavior.
 - Build from the architecture, not from shortcuts or ad hoc fixes.
 - Keep code readable, explicit, and easy to reason about.
-- Add comments only where the operations or intent are not obvious.
+- Every declaration must have a concise comment that explains what it represents or does. This includes constants, types, interfaces, classes, properties, functions, methods, and private helpers. Local variables and obvious control flow do not require comments.
+
+## Object-Oriented Architecture
+
+- Model real domain concepts as classes. Chora's literary hierarchy is `Library -> Text -> Segment`; its reader-owned record hierarchy is `DreamLibrary -> Dream -> Signal`.
+- Put behavior on the object that owns the data and persistence affected by that behavior. A `DreamLibrary` owns Dream identity, validation, persistence location, and origin; a `Dream` owns its signals and reflection.
+- Do not create generic `Manager`, `Helper`, `Utility`, or `Service` classes merely to hold unrelated operations. A collaboration boundary is justified only when it owns a concrete external responsibility, such as an IPC gateway, model provider, repository, or prompt loader.
+- Prefer an explicit domain method over a free function that accepts the domain object as its first parameter. A method communicates ownership; a wrapper function obscures it.
+- Keep orchestration at the boundary. Renderer controllers select workflows and invoke domain operations; domain records do not understand DOM events, Electron IPC, or model-provider implementation details they do not own.
+- Keep dependency direction inward: Electron IPC, repositories, model providers, and panels may depend on domain objects, but domain objects must not depend on Electron, DOM APIs, prompt files, or UI naming.
+- Use composition by default. A class should hold the collaborators and child objects it genuinely owns rather than inheriting implementation for convenience.
+
+### Encapsulation And Persistence
+
+- Keep state `private` unless a caller has a clear domain reason to observe it. Expose intention-revealing methods and immutable snapshots instead of mutable internal objects, collections, file paths, or persistence records.
+- A class is responsible for maintaining the validity of its own state. Validation, normalization, identifier assignment, origin tracking, and persistence rules belong with the object whose state they protect.
+- Do not let callers mutate a child collection or record owned by another object. Return readonly, deeply immutable views for observation and provide a named owner method when mutation is required.
+- Do not duplicate state in parallel objects, wrapper classes, caches, or sidecar files. Persist one authoritative representation and let its owner read and write it.
+- The main process owns filesystem paths, canonical identifiers, persistence, and validation at every IPC boundary. The renderer submits narrow commands or drafts; it must not supply trusted paths, persistence origins, or authoritative aggregate entities.
+- Resolve external identifiers through an owner-controlled manifest or registry before I/O. Validate them before use and prove resolved filesystem paths remain inside the owner-controlled root.
+- Legacy libraries are read-only inputs. An edit to legacy content creates or updates a primary-library record; normal save or delete operations must never rewrite or remove legacy files.
+- Keep implementation helpers `private` and close to the behavior they support. Promote a helper to a public API only when another owner has a legitimate domain need for it.
+
+### Renderer And Main-Process Boundaries
+
+- Renderer features contain a `Panel`, `Controller`, `Store`, and `Gateway`. Panels own DOM rendering and browser events only. Controllers coordinate workflows and typed application events. Stores are the sole renderer-side owners of feature state. Gateways are stateless typed IPC clients.
+- Main-process features contain an `IpcController`, concrete external-boundary collaborator, and `Repository` where canonical data access or persistence is required.
+- Publish typed application events through `ChoraEventBus` for cross-component communication. Event names describe completed facts in past tense or requests with a `requested` suffix.
+- Panels own persistent DOM roots and register delegated DOM events once. Do not rebuild the entire application DOM in response to state changes.
+- Retain and dispose subscriptions when a component has a shorter lifetime than the application.
+- Use `ErrorManager` for debug output, operational logs, and user-facing errors. Preserve the original failure for diagnosis at the owning boundary.
+- Language-model communication goes through the typed model gateway and never directly through a panel.
 
 ## Required Rules
 
-- Use `PascalCase` for types, properties, methods, and public members.
+- Use `PascalCase` for module filenames, exported functions, types, classes, interfaces, and public members. Conventional entrypoints and declaration files may retain their required names.
 - Use `camelCase` for local variables, parameters, and private fields.
-- Use `static readonly` or `const` for values that do not change.
-- Use tabs for indentation.
-- Do not use spaces for indentation.
-- Write no more than one operation per line.
-- Do not combine multiple actions into a single statement.
+- Use `const` for values that do not change; `readonly` for class fields that do not change after construction.
+- Use tabs for indentation. Do not use spaces for indentation.
+- Write no more than one operation per line. Do not combine multiple actions into a single statement.
+- Do not pass an operation result directly into another operation. Store it in a named local first.
 - Do not perform operations inside `return` statements.
-- Do not use early returns inside a function.
-- Use a single return only at the end of a function.
+- Do not use early returns inside a function. Use a single `return` only at the end of a function.
 - Place opening curly braces on the next line.
-- Use the form:
-
-  ```csharp
-  functionName()
-  {
-  }
-  ```
-
 - Avoid hacks, workarounds, and brittle shortcuts.
 
 ## Style Expectations
 
 - Prefer explicit types over implicit behavior when clarity matters.
-- Prefer classes, records, and methods when modeling domain behavior.
 - Keep functions focused on one responsibility.
 - Keep control flow simple and explicit.
 - Make state changes easy to trace.
-- Use comments to explain intent, not to restate code.
-- Prefer `async`/`await` over blocking calls when working with I/O.
-- Name asynchronous methods with the `Async` suffix.
-- Prefer `var` only when the type is obvious from the right-hand side.
-- Use expression-bodied members sparingly.
-- Keep access modifiers explicit.
+- Use declaration comments to explain purpose and ownership, not to restate syntax.
+- Prefer `async`/`await` over raw Promise chaining for I/O.
+- Name asynchronous functions and methods with the `Async` suffix.
+- Use expression-bodied members and arrow functions sparingly; prefer named functions with explicit bodies.
+- Do not use lambdas or arrow functions. Use named functions or explicit class methods instead.
+- Keep access modifiers explicit on class members.
 - Prefer `private` by default for class members.
-- Keep namespaces and file layout aligned with the project structure.
+- Import with `.js` extensions for relative TypeScript imports (NodeNext module resolution).
 
 ## Prompt Management
 
 - Do not embed model prompts or natural-language model instructions in source code.
 - Store every model prompt in a dedicated Markdown file under `Prompts/`.
-- Use one clearly named prompt file per mode, role, or operation.
+- Use one clearly named prompt file per role or operation.
 - Load prompts through the main-process prompt loader; do not read prompt files directly from the renderer or individual providers.
 - Keep source code responsible only for selecting prompts, supplying structured context, and assembling model requests.
 - Add prompt files to packaged application resources when introducing a new prompt location.
-- Test prompt loading, mode-to-file selection, and required prompt content without duplicating the full prompt text in tests.
 - Ordinary interface labels, validation messages, and error messages are not model prompts and may remain in code.
-
-## Application Components
-
-- Use the same object architecture for Library, Dreams, and Chat.
-- Renderer features contain a `Panel`, `Controller`, `Store`, and `Gateway`.
-- Panels own DOM rendering and browser events only. Panels do not own canonical feature state or call IPC directly.
-- Controllers coordinate workflows and application events but do not own feature state.
-- Stores are the sole renderer-side owners of feature state.
-- Gateways are stateless typed IPC clients.
-- Main-process features contain an `IpcController`, `Service`, and `Repository` where persistence or canonical data access is required.
-- Runtime text collection terminology is `Library`, not `Corpus`. Reserve `corpus` for the build-time source corpus pipeline.
-
-- Use `DocumentPanel`, `DreamPanel`, and `ChatPanel` consistently for the three user-interface areas.
-- Panels own persistent DOM roots and register delegated DOM events once.
-- Do not rebuild the entire application DOM in response to state changes.
-- Managers own domain state and workflows; panels must not own canonical document, Dream, or chat data.
-- Publish typed application events through `ChoraEventBus` for cross-component communication.
-- Event names describe completed facts in past tense or requests with a `requested` suffix.
-- Retain and dispose subscriptions when a component has a shorter lifetime than the application.
-- Use `ErrorManager` for debug output, operational logs, and user-facing error reporting.
-- Language-model communication from the application goes through `ModelGateway` and never directly through a panel.
 
 ## Decision Rule
 

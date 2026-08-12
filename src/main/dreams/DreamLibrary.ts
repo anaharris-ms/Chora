@@ -1,0 +1,169 @@
+import path from "node:path";
+import type { Dream as DreamRecord } from "../../shared/dreams/DreamTypes.js";
+import { Dream } from "./Dream.js";
+import { DreamRepository, type DreamPersistenceRecord } from "./DreamRepository.js";
+
+// Owns Dreams loaded into this reader's primary and legacy Dream libraries.
+export class DreamLibrary
+{
+	// Primary root used for all reader-owned writes.
+	private readonly primaryPath: string;
+	// Persistence collaborator for serialized Dream records.
+	private readonly repository: DreamRepository;
+	// Aggregates keyed by their stable Dream identity.
+	private readonly dreams = new Map<string, Dream>();
+	// Persistence metadata keyed by Dream identity.
+	private readonly records = new Map<string, DreamPersistenceRecord>();
+	// Tracks whether persistence records have been read for this application run.
+	private isLoaded = false;
+
+	// Creates a Dream aggregate root backed by the provided primary and legacy libraries.
+	public constructor(primaryPath: string, repository: DreamRepository)
+	{
+		this.primaryPath = primaryPath;
+		this.repository = repository;
+	}
+
+	// Lists immutable records for every Dream visible to the reader.
+	public async ListAsync(): Promise<DreamRecord[]>
+	{
+		await this.EnsureLoadedAsync();
+		const dreams: DreamRecord[] = [];
+
+		for (const dream of this.dreams.values())
+		{
+			const record = dream.ToRecord();
+			dreams.push(record);
+		}
+
+		return dreams;
+	}
+
+	// Normalizes and saves one Dream while retaining existing ownership metadata.
+	public async SaveAsync(record: DreamRecord): Promise<DreamRecord>
+	{
+		await this.EnsureLoadedAsync();
+		const existing = this.dreams.get(record.id);
+		const normalizedRecord = this.CreateSaveRecord(record, existing);
+		const dream = new Dream(normalizedRecord);
+		const existingPersistence = this.records.get(dream.GetId());
+		const persistence = this.CreatePersistenceRecord(dream, existingPersistence);
+
+		await this.repository.SaveAsync(persistence);
+		this.dreams.set(dream.GetId(), dream);
+		this.records.set(dream.GetId(), persistence);
+		const saved = dream.ToRecord();
+
+		return saved;
+	}
+
+	// Deletes a primary Dream while keeping legacy records read-only.
+	public async DeleteAsync(dreamId: string): Promise<void>
+	{
+		await this.EnsureLoadedAsync();
+		this.ValidateIdentifier(dreamId, "Dream identifier");
+		const persistence = this.records.get(dreamId);
+
+		if (persistence !== undefined && persistence.origin === "legacy")
+		{
+			throw new Error("Legacy Dreams are read-only");
+		}
+
+		if (persistence !== undefined)
+		{
+			await this.repository.DeleteAsync(persistence);
+			this.dreams.delete(dreamId);
+			this.records.delete(dreamId);
+		}
+	}
+
+	// Loads records once and gives primary records precedence over legacy records.
+	private async EnsureLoadedAsync(): Promise<void>
+	{
+		if (!this.isLoaded)
+		{
+			const records = await this.repository.LoadAsync();
+
+			for (const persistence of records)
+			{
+				const dream = new Dream(persistence.dream);
+				const hasDream = this.dreams.has(dream.GetId());
+
+				if (!hasDream)
+				{
+					this.dreams.set(dream.GetId(), dream);
+					this.records.set(dream.GetId(), persistence);
+				}
+			}
+
+			this.isLoaded = true;
+		}
+	}
+
+	// Preserves immutable ownership values and assigns the aggregate save timestamp.
+	private CreateSaveRecord(record: DreamRecord, existing: Dream | undefined): DreamRecord
+	{
+		const existingRecord = existing?.ToRecord();
+		const timestamp = new Date().toISOString();
+		const saved: DreamRecord = {
+			...structuredClone(record),
+			workId: existingRecord?.workId ?? record.workId,
+			createdAt: existingRecord?.createdAt ?? record.createdAt,
+			updatedAt: timestamp
+		};
+
+		return saved;
+	}
+
+	// Creates the primary persistence record owned by this library.
+	private CreatePersistenceRecord(dream: Dream, existing: DreamPersistenceRecord | undefined): DreamPersistenceRecord
+	{
+		const record = dream.ToRecord();
+		const useExistingPath = existing?.origin === "primary";
+		const filePath = useExistingPath ? existing.filePath : this.CreatePrimaryPath(record);
+		const persistence: DreamPersistenceRecord = {
+			dream: record,
+			filePath,
+			origin: "primary"
+		};
+
+		this.AssertPrimaryPath(filePath);
+
+		return persistence;
+	}
+
+	// Creates a stable readable filename from an already-valid Dream record.
+	private CreatePrimaryPath(dream: DreamRecord): string
+	{
+		const slug = dream.title.toLocaleLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 64) || "dream";
+		const fileName = `${slug}--${dream.id}.md`;
+		const filePath = path.resolve(this.primaryPath, dream.workId, fileName);
+
+		return filePath;
+	}
+
+	// Proves that a primary Dream path remains inside the primary library root.
+	private AssertPrimaryPath(filePath: string): void
+	{
+		const rootPath = path.resolve(this.primaryPath);
+		const relativePath = path.relative(rootPath, filePath);
+		const isOutsideRoot = relativePath === "" || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath);
+
+		if (isOutsideRoot)
+		{
+			throw new Error("Dream persistence path is outside the primary library");
+		}
+	}
+
+	// Rejects unsafe identifiers before they influence Dream persistence paths.
+	private ValidateIdentifier(value: string, label: string): void
+	{
+		const pattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u;
+		const isValid = pattern.test(value);
+
+		if (!isValid)
+		{
+			throw new Error(`${label} is invalid`);
+		}
+	}
+}
