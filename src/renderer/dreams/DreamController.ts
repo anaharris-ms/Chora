@@ -44,8 +44,13 @@ export class DreamController
 		try
 		{
 			const catalogue = await this.gateway.ListAsync();
-			this.store.SetCatalogue(catalogue);
-			await this.events.PublishAsync("dream.catalogue-changed", { count: catalogue.length });
+			const hasChanged = JSON.stringify(this.store.GetCatalogue()) !== JSON.stringify(catalogue);
+
+			if (hasChanged)
+			{
+				this.store.SetCatalogue(catalogue);
+				await this.events.PublishAsync("dream.catalogue-changed", { count: catalogue.length });
+			}
 		}
 		catch (error)
 		{

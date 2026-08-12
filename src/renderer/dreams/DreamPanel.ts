@@ -238,8 +238,18 @@ export class DreamPanel
 		if (target?.matches("[data-dream-search]") === true)
 		{
 			this.searchText = target.value;
-			this.Update();
-			this.root.querySelector<HTMLInputElement>("[data-dream-search]")?.focus();
+			this.RefreshCatalogueList();
+		}
+	}
+
+	private RefreshCatalogueList(): void
+	{
+		const list = this.root.querySelector<HTMLElement>(".dream-catalogue-list");
+
+		if (list !== null)
+		{
+			const dreams = [...this.store.GetCatalogue()].filter((dream) => this.MatchesSearch(dream)).sort((first, second) => this.CompareBySource(first, second));
+			list.innerHTML = this.RenderCatalogueContent(dreams);
 		}
 	}
 
