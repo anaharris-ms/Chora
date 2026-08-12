@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { ResolveResourcePath } from "./resource-paths.js";
+import { ResolveResourcePath } from "./ResourcePaths.js";
 
 function ParseEnvLine(line: string): [string, string] | null
 {

@@ -1,0 +1,35 @@
+import type { Dream } from "../../shared/dreams/DreamTypes.js";
+import { DreamLibrary } from "./DreamLibrary.js";
+
+// Coordinates Dream use cases through the reader-owned DreamLibrary aggregate.
+export class DreamService
+{
+	// Creates the use-case boundary around the owned Dream aggregate root.
+	public constructor(private readonly library: DreamLibrary)
+	{
+	}
+
+	// Lists immutable Dream records for renderer IPC.
+	public ListAsync(): Promise<Dream[]>
+	{
+		const dreams = this.library.ListAsync();
+
+		return dreams;
+	}
+
+	// Saves an IPC record through domain validation and normalization.
+	public SaveAsync(dream: Dream): Promise<Dream>
+	{
+		const saved = this.library.SaveAsync(dream);
+
+		return saved;
+	}
+
+	// Deletes a Dream through its aggregate-owned origin rules.
+	public DeleteAsync(dreamId: string): Promise<void>
+	{
+		const deletion = this.library.DeleteAsync(dreamId);
+
+		return deletion;
+	}
+}

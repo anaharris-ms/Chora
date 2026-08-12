@@ -1,0 +1,1 @@
+export type { PatternRecord } from "../../shared/patterns/PatternTypes.js";

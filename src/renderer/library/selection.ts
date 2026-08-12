@@ -1,5 +1,5 @@
-import type { TextSelection } from "../../shared/library/selection-types.js";
-import type { LibraryText } from "../../shared/library/library-types.js";
+import type { TextSelection } from "../../shared/library/SelectionTypes.js";
+import type { LibraryText } from "../../shared/library/LibraryTypes.js";
 
 function GetSegmentElement(node: Node | null): HTMLElement | null
 {

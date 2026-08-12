@@ -1,11 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ChatContext, ChatResult, ChatStreamDelta, ChatToolDefinition } from "../shared/chat/chat-types.js";
-import type { ProviderId, ProviderOption } from "../shared/chat/model-types.js";
-import type { SelectionAction } from "../shared/library/selection-types.js";
-import type { LibraryText, LibraryTextSummary, SourceNotice } from "../shared/library/library-types.js";
-import type { Dream } from "../shared/dreams/dream-types.js";
-import { IPC_CHANNELS } from "../shared/contracts/ipc-channels.js";
-import type { ApiSubscription, ChoraApi } from "../shared/contracts/chora-api.js";
+import type { ChatContext, ChatConversationSnapshot, ChatConversationSummary, ChatResult, ChatStreamDelta, ChatToolDefinition } from "../shared/chat/ChatTypes.js";
+import type { ModelSelection, ProviderId, ProviderOption } from "../shared/chat/ModelTypes.js";
+import type { SelectionAction } from "../shared/library/SelectionTypes.js";
+import type { LibraryText, LibraryTextSummary, SourceNotice } from "../shared/library/LibraryTypes.js";
+import type { Dream } from "../shared/dreams/DreamTypes.js";
+import type { PatternRecord } from "../shared/patterns/PatternTypes.js";
+import { IPC_CHANNELS } from "../shared/contracts/IpcChannels.js";
+import type { ApiSubscription, ChoraApi } from "../shared/contracts/ChoraApi.js";
 
 async function ListLibraryTexts(): Promise<LibraryTextSummary[]>
 {
@@ -61,9 +62,9 @@ async function LookUpWord(selectedText: string): Promise<void>
 	await ipcRenderer.invoke(IPC_CHANNELS.lookUpWord, selectedText);
 }
 
-async function StartChat(context: ChatContext, providerId: ProviderId, question: string, requestId: string): Promise<ChatResult>
+async function StartChat(context: ChatContext, selection: ModelSelection, question: string, requestId: string): Promise<ChatResult>
 {
-	const result = await ipcRenderer.invoke(IPC_CHANNELS.startChat, context, providerId, question, requestId);
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.startChat, context, selection, question, requestId);
 
 	return result as ChatResult;
 }
@@ -73,6 +74,20 @@ async function ContinueChat(conversationId: string, context: ChatContext, questi
 	const result = await ipcRenderer.invoke(IPC_CHANNELS.continueChat, conversationId, context, question, requestId);
 
 	return result as ChatResult;
+}
+
+async function ListChatConversations(): Promise<ChatConversationSummary[]>
+{
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.listChatConversations);
+
+	return result as ChatConversationSummary[];
+}
+
+async function LoadChatConversation(conversationId: string): Promise<ChatConversationSnapshot>
+{
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.loadChatConversation, conversationId);
+
+	return result as ChatConversationSnapshot;
 }
 
 async function GetChatTools(): Promise<ChatToolDefinition[]>
@@ -112,6 +127,13 @@ async function GetSourceNotice(workId: string): Promise<SourceNotice>
 	return result as SourceNotice;
 }
 
+async function ListPatterns(workId: string): Promise<PatternRecord[]>
+{
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.listPatterns, workId);
+
+	return result as PatternRecord[];
+}
+
 async function SaveDream(dream: Dream): Promise<Dream>
 {
 	const result = await ipcRenderer.invoke(IPC_CHANNELS.saveDream, dream);
@@ -142,11 +164,14 @@ const api: ChoraApi = {
 	LookUpWord,
 	StartChat,
 	ContinueChat,
+	ListChatConversations,
+	LoadChatConversation,
 	GetChatTools,
 	SubscribeChatDelta,
 	GetConfiguredProvider,
 	GetProviderOptions,
 	GetSourceNotice,
+	ListPatterns,
 	SaveDream,
 	DeleteDream,
 	ListDreams

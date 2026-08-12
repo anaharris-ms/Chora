@@ -1,4 +1,4 @@
-import type { ChoraApi } from "../shared/contracts/chora-api.js";
+import type { ChoraApi } from "../shared/contracts/ChoraApi.js";
 
 declare global {
 	interface Window {
