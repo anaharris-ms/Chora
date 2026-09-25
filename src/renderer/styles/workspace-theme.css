@@ -967,6 +967,7 @@ html {
 	max-width: min(220px, 100%);
 	font: inherit;
 	font-family: var(--reading-font);
+	font-size: var(--reading-font-size);
 	cursor: pointer;
 }
 
@@ -982,6 +983,8 @@ html {
 }
 
 .shell .reader-locator-control {
+	display: grid;
+	grid-template-columns: 24px 48px 24px;
 	gap: 3px;
 	flex-shrink: 0;
 }
@@ -993,10 +996,6 @@ html {
 	flex: 0 0 48px;
 	text-align: center;
 	padding: 0 2px;
-}
-
-.shell .reader-locator-control input::-webkit-calendar-picker-indicator {
-	display: none;
 }
 
 .shell .reader-find-nav {

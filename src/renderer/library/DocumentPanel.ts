@@ -126,7 +126,7 @@ export class DocumentPanel
 		const locators = this.CollectLocators(document);
 		const locatorOptions = locators.map((locator) => `<option value="${EscapeHtml(locator)}">${EscapeHtml(locator)}</option>`).join("");
 		const firstLocator = locators[0] ?? "";
-		const locatorControl = locators.length === 0 ? "" : `<div class="reader-control reader-locator-control"><button class="reader-find-nav button-control" data-passage-step="-1" type="button" title="Previous passage" aria-label="Previous passage">${PreviousIcon}</button><input data-locator-jump type="text" list="reader-locators" value="${EscapeHtml(firstLocator)}" aria-label="Go to Stephanus locator"><datalist id="reader-locators">${locatorOptions}</datalist><button class="reader-find-nav button-control" data-passage-step="1" type="button" title="Next passage" aria-label="Next passage">${NextIcon}</button></div><label class="reader-control reader-locator-select"><select data-locator-navigation aria-label="Choose Stephanus passage">${locatorOptions}</select></label>`;
+		const locatorControl = locators.length === 0 ? "" : `<div class="reader-control reader-locator-control"><button class="reader-find-nav button-control" data-passage-step="-1" type="button" title="Previous passage" aria-label="Previous passage">${PreviousIcon}</button><input data-locator-jump type="text" value="${EscapeHtml(firstLocator)}" aria-label="Go to Stephanus locator"><button class="reader-find-nav button-control" data-passage-step="1" type="button" title="Next passage" aria-label="Next passage">${NextIcon}</button></div><label class="reader-control reader-locator-select"><select data-locator-navigation aria-label="Choose Stephanus passage">${locatorOptions}</select></label>`;
 		const source = sourceNotice?.source ?? document.provenance.repository;
 		const license = sourceNotice?.license ?? document.provenance.license;
 		const attribution = [source, license].filter(Boolean).join(" · ");
@@ -467,7 +467,7 @@ export class DocumentPanel
 		ClearBrowserSelection();
 	}
 
-	// Schedules a debounced capture of the segment nearest the viewport center.
+	// Schedules a debounced capture of the segment at the top reading edge.
 	private ScheduleReadingFocus(): void
 	{
 		if (this.focusTimer !== null) clearTimeout(this.focusTimer);
@@ -481,26 +481,30 @@ export class DocumentPanel
 		this.CaptureReadingFocus();
 	}
 
-	// Records the segment nearest the viewport center as the reading focus.
+	// Records the first segment visible below the toolbar as the reading focus.
 	private CaptureReadingFocus(): void
 	{
 		const viewport = this.root.getBoundingClientRect();
-		const center = viewport.top + viewport.height / 2;
+		const toolbar = this.root.querySelector<HTMLElement>(".reader-toolbar");
+		const toolbarBottom = toolbar?.getBoundingClientRect().bottom ?? viewport.top;
+		const readingTop = Math.max(viewport.top, toolbarBottom) + 16;
 		let closest: HTMLElement | null = null;
 		let distance = Number.POSITIVE_INFINITY;
+		const segmentNodes = this.root.querySelectorAll<HTMLElement>("[data-segment-key]");
+		const segments = Array.from(segmentNodes);
 
-		this.root.querySelectorAll<HTMLElement>("[data-segment-key]").forEach((segment) =>
+		for (const segment of segments)
 		{
 			const bounds = segment.getBoundingClientRect();
-			const segmentDistance = Math.abs(bounds.top + bounds.height / 2 - center);
-			if (bounds.bottom >= viewport.top && bounds.top <= viewport.bottom && segmentDistance < distance)
+			const segmentDistance = Math.max(0, bounds.top - readingTop);
+			if (bounds.bottom > readingTop && bounds.top < viewport.bottom && segmentDistance < distance)
 			{
 				closest = segment;
 				distance = segmentDistance;
 			}
-		});
+		}
 
-		const segmentKey = closest === null ? undefined : (closest as HTMLElement).dataset.segmentKey;
+		const segmentKey = closest?.dataset.segmentKey;
 		if (segmentKey !== undefined) this.controller.SetFocusSegment(segmentKey);
 	}
 }

@@ -183,7 +183,7 @@
 	background: transparent;
 	color: var(--app-text);
 	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-	font-size: 16px;
+	font-size: var(--reading-font-size);
 	font-weight: 400;
 	line-height: 1.55;
 	white-space: pre-wrap;
@@ -298,7 +298,7 @@
 .dream-editor .signal-heading {
 	top: 0;
 	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-	font-size: 15px;
+	font-size: var(--reading-font-size);
 	font-weight: 400;
 	line-height: 1.7;
 	color: inherit;
@@ -358,7 +358,7 @@
 .dream-editor .signal-markdown-editor {
 	margin: 0 0 1rem;
 	color: var(--app-text);
-	font-size: 13px;
+	font-size: var(--reading-font-size);
 	line-height: 1.55;
 }
 
@@ -375,6 +375,7 @@
 	padding: 10px 0 0;
 	overflow: visible;
 	resize: none;
+	font-size: var(--reading-font-size);
 }
 
 .dream-editor .markdown-content:focus-within {
@@ -438,9 +439,10 @@
 	border-top: 1px solid color-mix(in srgb, var(--muted-text) 40%, transparent);
 }
 
-.dream-editor .resonance-note {
+.dream-editor .resonance-note,
+.dream-editor .resonance-input {
 	color: var(--app-text);
-	font-size: 13px;
+	font-size: var(--reading-font-size);
 	line-height: 1.5;
 }
 

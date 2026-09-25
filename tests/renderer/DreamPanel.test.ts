@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { ReadingSettingsStore } from "../../src/renderer/core/settings/ReadingSettingsStore.js";
 import { DreamPanel } from "../../src/renderer/dreams/DreamPanel.js";
 import { DreamController } from "../../src/renderer/dreams/DreamController.js";
 import { DreamStore } from "../../src/renderer/dreams/DreamStore.js";
@@ -104,6 +106,61 @@ describe("DreamPanel", function DreamPanelTests()
 		expect(root.querySelector(".dream-source-section")).toBe(details);
 		expect(details.open).toBe(false);
 		expect(source.textContent).toBe("abcdef");
+	});
+
+	it("applies reading size to Dream content without enlarging toolbar labels", async function ScalesDreamContentAsync()
+	{
+		const stylesheet = document.createElement("style");
+		const styles = ["base", "workspace-theme", "left-tab-panels", "dark-theme", "tabs", "dream-editor", "markdown-editor", "responsive"];
+		stylesheet.textContent = styles.map(function ReadStyle(name): string
+		{
+			const content = readFileSync(`src/renderer/styles/${name}.css`, "utf8");
+			return content;
+		}).join("\n");
+		const previousStyle = document.documentElement.style.cssText;
+		const previousTheme = document.documentElement.dataset.theme;
+		const previousSettings = window.localStorage.getItem("chora:reading-settings");
+		document.head.append(stylesheet);
+		try
+		{
+			vi.spyOn(gateway, "AllocateIdAsync").mockResolvedValue("resonance-size-test");
+			const input = root.querySelector<HTMLInputElement>("[data-resonance-input]")!;
+			input.value = "A saved resonance";
+			root.querySelector<HTMLButtonElement>("[data-resonance-save]")!.click();
+			await vi.waitFor(function ResonanceSaved(): void
+			{
+				expect(root.querySelector(".resonance-note")).not.toBeNull();
+			});
+			root.querySelector<HTMLButtonElement>("[data-resonance-add]")!.click();
+			const settings = new ReadingSettingsStore();
+			settings.Apply();
+			const selectors = [".dream-source", ".signal-heading", ".signal-markdown-editor .ProseMirror p", ".resonance-note", ".resonance-input", ".dream-exegesis-markdown .ProseMirror p"];
+			const toolbarLabel = root.querySelector<HTMLElement>(".resonance-section-heading")!;
+			const toolbarSize = getComputedStyle(toolbarLabel).fontSize;
+			for (const delta of [0, 2, -1])
+			{
+				settings.ChangeFontSize(delta);
+				expect(document.documentElement.style.getPropertyValue("--reading-font-size")).toBe(`${settings.GetFontSize()}px`);
+				stylesheet.remove();
+				document.head.append(stylesheet);
+				for (const selector of selectors)
+				{
+					const content = root.querySelector<HTMLElement>(selector)!;
+					expect(content, selector).not.toBeNull();
+					expect(getComputedStyle(content).fontSize, selector).toBe(`${settings.GetFontSize()}px`);
+				}
+				expect(getComputedStyle(toolbarLabel).fontSize).toBe(toolbarSize);
+			}
+		}
+		finally
+		{
+			stylesheet.remove();
+			document.documentElement.style.cssText = previousStyle;
+			if (previousTheme === undefined) delete document.documentElement.dataset.theme;
+			else document.documentElement.dataset.theme = previousTheme;
+			if (previousSettings === null) window.localStorage.removeItem("chora:reading-settings");
+			else window.localStorage.setItem("chora:reading-settings", previousSettings);
+		}
 	});
 
 	it("preserves editors and expansion when switching tabs and autosaves content", async function PreservesEditors()

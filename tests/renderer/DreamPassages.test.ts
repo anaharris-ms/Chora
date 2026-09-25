@@ -138,6 +138,8 @@ describe("Dream passage matching", function PassageTests()
 			expect(passageSelect.value).toBe("340a");
 			expect(book.value).toBe("1");
 			const locatorInput = root.querySelector<HTMLInputElement>("[data-locator-jump]")!;
+			expect(locatorInput.hasAttribute("list")).toBe(false);
+			expect(getComputedStyle(locatorInput.parentElement!).gridTemplateColumns).toBe("24px 48px 24px");
 			locatorInput.focus();
 			locatorInput.value = "34";
 			await events.PublishAsync("library.focus-changed", { textId: text.id, segmentKey: "s4" });
@@ -145,11 +147,26 @@ describe("Dream passage matching", function PassageTests()
 			expect(passageSelect.value).toBe("341c");
 			locatorInput.blur();
 			vi.spyOn(root, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 600));
+			vi.spyOn(toolbar, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 100));
+			const positions: Record<string, number> = { s1: 120, s2: 220, s3: 320, s4: 800 };
 			for (const segment of Array.from(root.querySelectorAll<HTMLElement>("[data-segment-key]")))
 			{
-				const top = segment.dataset.segmentKey === "s3" ? 250 : 800;
-				vi.spyOn(segment, "getBoundingClientRect").mockReturnValue(new DOMRect(0, top, 400, 100));
+				vi.spyOn(segment, "getBoundingClientRect").mockImplementation(function SegmentBounds(): DOMRect
+				{
+					const top = positions[segment.dataset.segmentKey!];
+					return new DOMRect(0, top, 400, 100);
+				});
 			}
+			root.dispatchEvent(new Event("scroll"));
+			await vi.waitFor(function BookStartUpdated(): void
+			{
+				expect(passageSelect.value).toBe("340a");
+				expect(locatorInput.value).toBe("340a");
+			});
+			positions.s1 = -100;
+			positions.s2 = 0;
+			positions.s3 = 100;
+			positions.s4 = 260;
 			root.dispatchEvent(new Event("scroll"));
 			await vi.waitFor(function ScrollUpdated(): void
 			{
@@ -157,6 +174,11 @@ describe("Dream passage matching", function PassageTests()
 				expect(locatorInput.value).toBe("340b");
 				expect(book.value).toBe("1");
 			});
+			root.scrollTop = 0;
+			positions.s1 = 500;
+			passageSelect.value = "340a";
+			passageSelect.dispatchEvent(new Event("change", { bubbles: true }));
+			expect(root.scrollTop).toBe(384);
 		}
 		finally
 		{
