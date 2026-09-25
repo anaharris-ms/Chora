@@ -1,0 +1,44 @@
+/* Part of styles.css, split by topic. Import order in ../styles.css matches this file's original position — do not reorder relative to the other split files. */
+/* Responsive breakpoints for narrower windows. */
+
+@media (max-width: 1000px) {
+	.shell {
+		grid-template-columns: minmax(220px, 27vw) minmax(0, 1fr) 0;
+	}
+
+	.shell.dream-open {
+		grid-template-columns: minmax(200px, 25vw) minmax(300px, 44vw) minmax(0, 1fr);
+	}
+}
+
+@media (max-width: 650px) {
+	.shell {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "left";
+	}
+
+	.shell.dream-open {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "editor";
+	}
+
+	#readingPane {
+		padding: 1.4rem 1rem 3rem;
+	}
+
+	.reader-toolbar {
+		margin-top: -1.4rem;
+		flex-wrap: wrap;
+		justify-content: flex-start;
+	}
+
+	.reader-find {
+		flex: 1 0 100%;
+		margin-left: 0;
+	}
+
+	.reader-find input {
+		flex: 1;
+		width: auto;
+	}
+}

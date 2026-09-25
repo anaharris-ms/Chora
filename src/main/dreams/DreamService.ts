@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Dream } from "../../shared/dreams/DreamTypes.js";
 import { DreamLibrary } from "./DreamLibrary.js";
 
@@ -31,5 +32,13 @@ export class DreamService
 		const deletion = this.library.DeleteAsync(dreamId);
 
 		return deletion;
+	}
+
+	// Allocates a new canonical identifier owned by the main process, for a Dream or Dream signal.
+	public AllocateIdAsync(): Promise<string>
+	{
+		const id = randomUUID();
+
+		return Promise.resolve(id);
 	}
 }

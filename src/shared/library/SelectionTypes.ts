@@ -10,4 +10,4 @@ export interface TextSelection
 	locatorEnd: SourceLocator | null;
 }
 
-export type SelectionAction = "copy" | "lookup" | "create-dream" | "add-to-dream" | "add-dream-signal" | "copy-dream-source" | "add-dream-source-signal" | null;
+export type SelectionAction = "copy" | "lookup" | "create-dream" | "add-to-dream" | "add-dream-signal" | "copy-dream-source" | "add-dream-source-signal" | "attach-resonance-target" | null;

@@ -28,7 +28,6 @@ This repository uses a strict, architecture-first C#-style discipline, applied t
 - Do not duplicate state in parallel objects, wrapper classes, caches, or sidecar files. Persist one authoritative representation and let its owner read and write it.
 - The main process owns filesystem paths, canonical identifiers, persistence, and validation at every IPC boundary. The renderer submits narrow commands or drafts; it must not supply trusted paths, persistence origins, or authoritative aggregate entities.
 - Resolve external identifiers through an owner-controlled manifest or registry before I/O. Validate them before use and prove resolved filesystem paths remain inside the owner-controlled root.
-- Legacy libraries are read-only inputs. An edit to legacy content creates or updates a primary-library record; normal save or delete operations must never rewrite or remove legacy files.
 - Keep implementation helpers `private` and close to the behavior they support. Promote a helper to a public API only when another owner has a legitimate domain need for it.
 
 ### Renderer And Main-Process Boundaries

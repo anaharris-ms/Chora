@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { Dream } from "../../src/main/dreams/Dream.js";
 import { DreamLibrary } from "../../src/main/dreams/DreamLibrary.js";
-import { MigrateDream, ParseDreamMarkdown, SerializeDreamMarkdown } from "../../src/main/dreams/DreamMarkdownCodec.js";
+import { ParseDreamMarkdown, SerializeDreamMarkdown } from "../../src/main/dreams/DreamMarkdownCodec.js";
 import { DreamRepository, type DreamPersistenceRecord } from "../../src/main/dreams/DreamRepository.js";
 import type { Dream } from "../../src/shared/dreams/DreamTypes.js";
 
@@ -75,36 +75,10 @@ describe("Dream library", function DreamLibraryTests()
 	it("round trips Greek polytonic text without changing code points", () =>
 	{
 		const dream = CreateDream("greek", "Πρόσοψις");
-		dream.signals.push({ id: "signal", sourceRef: "s1", selection: dream.source, text: "χθὲς", description: "ἅμα — a simultaneous movement." });
+		dream.signals.push({ id: "signal", sourceRef: "s1", selection: dream.source, text: "χθὲς", description: "ἅμα — a simultaneous movement.", resonances: [] });
 		const parsed = ParseDreamMarkdown(SerializeDreamMarkdown(dream));
 
 		expect(parsed).toEqual(dream);
-	});
-
-	it("migrates legacy reflection fields and link names", () =>
-	{
-		const dream = CreateDream("legacy", "Descent");
-		const migrated = MigrateDream({ ...dream, reflection: "", seeing: "A descent.", relations: "Past and future.", threads: "Will and futurity.", linkedDreamIds: undefined, linkedMemoryIds: ["older"] });
-
-		expect(migrated?.reflection).toContain("[Previous Relations]");
-		expect(migrated?.reflection).toContain("[Previous Threads to Follow]");
-		expect(migrated?.linkedDreamIds).toEqual(["older"]);
-	});
-
-	it("reads legacy libraries without moving their files", async () =>
-	{
-		const primary = await mkdtemp(path.join(os.tmpdir(), "chora-dreams-"));
-		const legacy = await mkdtemp(path.join(os.tmpdir(), "chora-memories-"));
-		directories.push(primary, legacy);
-		const legacyRepository = new DreamRepository(legacy);
-		const legacyLibrary = new DreamLibrary(legacy, legacyRepository);
-		await legacyLibrary.SaveAsync(CreateDream("legacy", "Remembered"));
-		const primaryRepository = new DreamRepository(primary, [legacy]);
-		const primaryLibrary = new DreamLibrary(primary, primaryRepository);
-		const dreams = await primaryLibrary.ListAsync();
-
-		expect(dreams.map((dream) => dream.id)).toContain("legacy");
-		expect(await readdir(path.join(legacy, "republic"))).toHaveLength(1);
 	});
 
 	it("rejects identifiers that could escape the primary Dream library", async () =>
@@ -116,44 +90,6 @@ describe("Dream library", function DreamLibraryTests()
 
 		await expect(library.SaveAsync(unsafeIdDream)).rejects.toThrow("Dream identifier is invalid");
 		await expect(library.SaveAsync(unsafeWorkDream)).rejects.toThrow("Dream work identifier is invalid");
-	});
-
-	it("materializes an edited legacy Dream into the primary library", async () =>
-	{
-		const primary = await mkdtemp(path.join(os.tmpdir(), "chora-dreams-"));
-		const legacy = await mkdtemp(path.join(os.tmpdir(), "chora-memories-"));
-		const original = CreateDream("legacy", "Remembered");
-		const edited = { ...original, title: "Remembered differently" };
-		directories.push(primary, legacy);
-		const legacyRepository = new DreamRepository(legacy);
-		const legacyLibrary = new DreamLibrary(legacy, legacyRepository);
-		await legacyLibrary.SaveAsync(original);
-
-		const repository = new DreamRepository(primary, [legacy]);
-		const library = new DreamLibrary(primary, repository);
-		await library.SaveAsync(edited);
-
-		const legacyContent = await readFile(path.join(legacy, "republic", "remembered--legacy.md"), "utf8");
-		const primaryContent = await readFile(path.join(primary, "republic", "remembered-differently--legacy.md"), "utf8");
-
-		expect(legacyContent).toContain("# Remembered");
-		expect(primaryContent).toContain("# Remembered differently");
-	});
-
-	it("does not delete a legacy Dream", async () =>
-	{
-		const primary = await mkdtemp(path.join(os.tmpdir(), "chora-dreams-"));
-		const legacy = await mkdtemp(path.join(os.tmpdir(), "chora-memories-"));
-		directories.push(primary, legacy);
-		const legacyRepository = new DreamRepository(legacy);
-		const legacyLibrary = new DreamLibrary(legacy, legacyRepository);
-		await legacyLibrary.SaveAsync(CreateDream("legacy", "Remembered"));
-
-		const repository = new DreamRepository(primary, [legacy]);
-		const library = new DreamLibrary(primary, repository);
-
-		await expect(library.DeleteAsync("legacy")).rejects.toThrow("Legacy Dreams are read-only");
-		expect(await readdir(path.join(legacy, "republic"))).toHaveLength(1);
 	});
 
 	it("writes readable Markdown in the work folder", async () =>
@@ -188,7 +124,7 @@ describe("Dream library", function DreamLibraryTests()
 		const repository = new DreamRepository(directory);
 		const original = CreateDream("indexed", "Original");
 		const filePath = path.join(directory, "republic", "original--indexed.md");
-		const record: DreamPersistenceRecord = { dream: original, filePath, origin: "primary" };
+		const record: DreamPersistenceRecord = { dream: original, filePath };
 
 		await repository.SaveAsync(record);
 		const initial = await repository.LoadAsync();
@@ -214,7 +150,8 @@ describe("Dream library", function DreamLibraryTests()
 			sourceRef: "s1",
 			selection: record.source,
 			text: "χθὲς",
-			description: ""
+			description: "",
+			resonances: []
 		};
 
 		dream.AddSignal(signal);

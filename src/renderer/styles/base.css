@@ -1,0 +1,1308 @@
+/* Part of styles.css, split by topic. Import order in ../styles.css matches this file's original position — do not reorder relative to the other split files. */
+/* Root variables (superseded by the light theme below), reset, shell layout, reading pane, dream panel/catalogue, chat panel, and pattern panel. */
+
+:root {
+	--ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--reading-font: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+	--reading-font-size: 18px;
+	color-scheme: dark;
+	--app-background: #101720;
+	--panel-background: #16202d;
+	--dream-background: #1d2d3d;
+	--dream-raised: #26394e;
+	--dream-divider: rgba(218, 232, 247, 0.13);
+	--dream-muted: #a8b8c9;
+	--dream-accent: #8fbaf4;
+	--dream-selection: rgba(106, 161, 224, 0.25);
+	--panel-border: #29394d;
+	--app-text: #eef2f7;
+	--muted-text: #a9b6c6;
+	--accent: #d7b56d;
+	--accent-soft: rgba(215, 181, 109, 0.18);
+	--danger: #f0a4a4;
+}
+
+html,
+body {
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	background: var(--app-background);
+	color: var(--app-text);
+	font-family: var(--ui-font);
+}
+
+body {
+	overflow: hidden;
+}
+
+.application-error {
+	position: fixed;
+	top: 0.75rem;
+	left: 50%;
+	z-index: 20;
+	max-width: min(36rem, calc(100vw - 2rem));
+	padding: 0.65rem 0.85rem;
+	transform: translateX(-50%);
+	border: 1px solid var(--danger);
+	border-radius: 0.5rem;
+	background: #2a1820;
+	color: var(--app-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.78rem;
+}
+
+button,
+input,
+textarea,
+select {
+	font-family: var(--ui-font);
+}
+
+.left-panel,
+.catalogue-header,
+.reader-toolbar,
+.dream-header {
+	font-family: var(--ui-font);
+}
+
+.work-header h1,
+.text-body,
+.dream-title-field input,
+.signal-heading {
+	font-family: var(--reading-font);
+}
+
+.button-control {
+	transition: color 130ms ease-out, background-color 130ms ease-out, border-color 130ms ease-out;
+}
+
+.button-control:not(:disabled):hover {
+	color: var(--button-hover-color, var(--accent));
+	background-color: var(--button-hover-background, var(--accent-soft));
+}
+
+.button-control:not(:disabled):active {
+	color: var(--button-active-color, var(--accent));
+	background-color: var(--button-active-background, var(--accent-soft));
+}
+
+.shell {
+	--left-pane-width: 24vw;
+	--dream-pane-width: 42vw;
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(220px, var(--left-pane-width)) minmax(0, 1fr) 0;
+	grid-template-areas: "left document editor";
+	height: 100vh;
+}
+
+.shell.dream-open {
+	grid-template-columns: minmax(220px, var(--left-pane-width)) minmax(300px, var(--dream-pane-width)) minmax(0, 1fr);
+	grid-template-areas: "left editor document";
+}
+
+.right-panel {
+	grid-area: editor;
+	display: flex;
+	flex-direction: column;
+	background: var(--dream-background);
+	overflow: hidden;
+	padding: 0;
+	border-left: 1px solid var(--dream-divider);
+	border-right: none;
+}
+
+.panel-resize-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	z-index: 10;
+	width: 0.375rem;
+	margin-left: -0.1875rem;
+	cursor: col-resize;
+}
+
+.panel-resize-handle::after {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0.125rem;
+	width: 0.125rem;
+	background: transparent;
+	content: "";
+	transition: background-color 130ms ease-out;
+}
+
+.panel-resize-handle:hover::after,
+.shell.is-resizing .panel-resize-handle::after {
+	background: #2b7edc;
+}
+
+.panel-resize-handle[data-resize-pane="left"] {
+	left: var(--left-pane-width);
+}
+
+.panel-resize-handle[data-resize-pane="dream"] {
+	left: calc(var(--left-pane-width) + var(--dream-pane-width));
+}
+
+.shell:not(.dream-open) .panel-resize-handle[data-resize-pane="dream"] {
+	display: none;
+}
+
+.shell.is-resizing {
+	user-select: none;
+}
+
+.shell.left-collapsed {
+	grid-template-columns: var(--left-collapsed-width, 3rem) minmax(0, 1fr) 0;
+}
+
+.shell.left-collapsed.dream-open {
+	grid-template-columns: var(--left-collapsed-width, 3rem) minmax(300px, var(--dream-pane-width)) minmax(0, 1fr);
+}
+
+.shell.left-collapsed .left-view {
+	display: none;
+}
+
+.shell.left-collapsed .panel-resize-handle[data-resize-pane="left"] {
+	left: var(--left-collapsed-width, 3rem);
+}
+
+.shell.left-collapsed .panel-resize-handle[data-resize-pane="dream"] {
+	left: calc(var(--left-collapsed-width, 3rem) + var(--dream-pane-width));
+}
+
+.left-panel {
+	grid-area: left;
+	display: flex;
+	min-width: 0;
+	min-height: 0;
+	border-right: 1px solid var(--panel-border);
+	background: var(--panel-background);
+}
+
+.activity-rail {
+	display: flex;
+	flex: 0 0 2.8rem;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.7rem 0.35rem;
+	border-right: 1px solid var(--panel-border);
+	background: #111a25;
+}
+
+.activity-button {
+	display: grid;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--muted-text);
+	font-family: "Segoe UI Symbol", "Segoe UI", sans-serif;
+	font-size: 1rem;
+	cursor: pointer;
+}
+
+.activity-button:hover,
+.activity-button.selected {
+	border-color: var(--panel-border);
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.left-view {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+
+.left-view[hidden] {
+	display: none;
+}
+
+.center-panel {
+	grid-area: document;
+	background: #fbfaf7;
+	overflow: auto;
+}
+
+#readingPane {
+	box-sizing: border-box;
+	min-height: 100%;
+	padding: 2.25rem 2rem 4rem;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
+}
+
+.work-header,
+.text-body,
+.source-notice {
+	max-width: 40rem;
+	margin-right: auto;
+	margin-left: auto;
+}
+
+.work-header {
+	margin-bottom: 1rem;
+}
+
+.work-header h1 {
+	margin: 0;
+	font-size: 1.6rem;
+	font-weight: 600;
+}
+
+.work-header-greek {
+	margin: 0.2rem 0 0;
+	color: color-mix(in srgb, var(--reader-foreground) 60%, var(--reader-background));
+}
+
+.reader-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	flex-wrap: wrap;
+	gap: 0.7rem;
+	box-sizing: border-box;
+	max-width: 40rem;
+	margin: -2.25rem auto 1.75rem;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 18%, var(--reader-background));
+	border-radius: 0.7rem;
+	background: var(--reader-background);
+	box-shadow: 0 8px 18px color-mix(in srgb, var(--reader-foreground) 9%, transparent);
+}
+
+.reader-control {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--reader-foreground);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+}
+
+.reader-control select {
+	padding: 0.28rem 1.8rem 0.28rem 0.45rem;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 25%, var(--reader-background));
+	border-radius: 0.35rem;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
+}
+
+.reader-book-control {
+	margin-right: 0;
+}
+
+.reader-locator-control input {
+	width: 4.5rem;
+	padding: 0.28rem 0.45rem;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 25%, var(--reader-background));
+	border-radius: 0.35rem;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
+	font: inherit;
+}
+
+.reader-find {
+	margin-left: 0;
+	gap: 0.25rem;
+}
+
+.reader-find input {
+	width: 9rem;
+	padding: 0.28rem 0.45rem;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 25%, var(--reader-background));
+	border-radius: 0.35rem;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
+	font: inherit;
+}
+
+.reader-find-count {
+	min-width: 2.4rem;
+	color: color-mix(in srgb, var(--reader-foreground) 60%, var(--reader-background));
+	font-size: 0.7rem;
+	text-align: center;
+}
+
+.reader-find-nav {
+	display: grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	padding: 0;
+	border: 1px solid color-mix(in srgb, var(--reader-foreground) 25%, var(--reader-background));
+	border-radius: 0.35rem;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
+	font-size: 0.9rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+mark.find-hit {
+	padding: 0 0.05em;
+	border-radius: 0.15em;
+	background: #ffe58a;
+	color: inherit;
+}
+
+mark.find-hit.active {
+	background: #ffb300;
+	color: #1c1408;
+}
+
+.source-notice {
+	margin-bottom: 1.25rem;
+	color: color-mix(in srgb, var(--reader-foreground) 65%, var(--reader-background));
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.78rem;
+}
+
+.source-notice summary {
+	cursor: pointer;
+}
+
+.source-details {
+	margin-top: 0.5rem;
+	padding-left: 0.8rem;
+	border-left: 2px solid color-mix(in srgb, var(--reader-foreground) 20%, var(--reader-background));
+}
+
+.text-body {
+	font-size: var(--reading-font-size);
+	line-height: 1.56;
+}
+
+.book-heading {
+	margin: 2.5em 0 1.5em;
+	color: color-mix(in srgb, var(--reader-foreground) 75%, var(--reader-background));
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.85em;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+.text-segment {
+	margin: 0 auto 0.48em;
+	content-visibility: auto;
+	contain-intrinsic-size: auto 1.5em;
+}
+
+.text-segment.has-locator {
+	margin-top: 1.35em;
+}
+
+.source-locator {
+	display: block;
+	user-select: none;
+	color: color-mix(in srgb, var(--reader-foreground) 43%, var(--reader-background));
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.68em;
+	font-style: italic;
+	line-height: 1.25;
+	text-align: center;
+}
+
+.source-locator {
+	margin-bottom: 0.45em;
+}
+
+.passage-dream-button {
+	--button-hover-color: var(--accent);
+	--button-active-color: var(--accent);
+	--button-hover-background: transparent;
+	--button-active-background: transparent;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	margin-left: 6px;
+	padding: 4px;
+	border: 0;
+	border-radius: 3px;
+	background: transparent;
+	color: var(--reader-foreground);
+	font: inherit;
+	vertical-align: top;
+	cursor: pointer;
+}
+
+.passage-dream-button svg {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	overflow: visible;
+}
+
+.passage-dream-button:hover,
+.passage-dream-button:focus-visible {
+	color: var(--accent);
+}
+
+.dream-passage-filter {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 0.75rem;
+	font-size: 0.8rem;
+}
+
+.dream-passage-filter span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.dream-passage-filter button {
+	flex-shrink: 0;
+}
+
+.speaker-label {
+	display: block;
+	margin-bottom: 0.14em;
+	user-select: none;
+	color: color-mix(in srgb, var(--reader-foreground) 72%, var(--reader-background));
+	font-weight: 700;
+}
+
+.segment-text {
+	white-space: pre-wrap;
+}
+
+.dream-panel {
+	box-sizing: border-box;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	overflow: auto;
+	padding: 1.25rem clamp(1.5rem, 3vw, 3.5rem) 2.5rem;
+	background: var(--dream-background);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: var(--reading-font-size);
+}
+
+.dream-catalogue {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding: 0.85rem 0.55rem 1.25rem;
+	background: var(--dream-background);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dream-catalogue h3 {
+	margin: 0;
+	color: #f1f6fc;
+	font-size: 0.82rem;
+	font-weight: 650;
+}
+
+.catalogue-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 0 0.35rem 0.7rem;
+	padding: 0 0.1rem 0.65rem;
+	border-bottom: 1px solid var(--dream-divider);
+}
+
+.catalogue-header .dream-action-link {
+	margin: 0;
+}
+
+.catalogue-group {
+	margin: 0 0 0.25rem;
+}
+
+.catalogue-group h4 {
+	margin: 0;
+	padding: 0.6rem 0.5rem 0.3rem;
+	background: var(--dream-background);
+	color: var(--dream-muted);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.catalogue-group-toggle {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	margin: 0;
+	padding: 0.7rem 0.5rem 0.35rem;
+	border: 0;
+	background: var(--dream-background);
+	color: var(--dream-muted);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-align: left;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.catalogue-group-toggle::before {
+	display: none;
+	content: none;
+}
+
+.catalogue-group-content[hidden] {
+	display: none;
+}
+
+.catalogue-item {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto auto;
+	align-items: center;
+	gap: 0.55rem;
+	width: 100%;
+	padding: 0.52rem 0.55rem;
+	border: 0;
+	border-radius: 0.4rem;
+	background: transparent;
+	color: var(--app-text);
+	text-align: left;
+	cursor: pointer;
+}
+
+.catalogue-item:hover,
+.catalogue-item:focus-visible,
+.catalogue-item.selected {
+	background: var(--dream-selection);
+	color: #f5f9ff;
+	outline: 0;
+}
+
+.catalogue-item.selected {
+	box-shadow: inset 2px 0 0 var(--dream-accent);
+}
+
+.catalogue-item strong,
+.catalogue-item span {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.catalogue-item strong {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+.catalogue-item span {
+	color: var(--dream-muted);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.67rem;
+}
+
+.catalogue-location {
+	max-width: 12rem;
+}
+
+.dream-header,
+.dream-save {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.dream-header {
+	position: sticky;
+	top: -1.4rem;
+	z-index: 3;
+	margin: 0 -0.15rem 1.35rem;
+	padding: 0.75rem 0.15rem 0.85rem;
+	border-bottom: 1px solid var(--dream-divider);
+	background: var(--dream-background);
+}
+
+.dream-toolbar-status {
+	color: var(--dream-muted);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.7rem;
+}
+
+.dream-delete-link {
+	margin-left: auto;
+	color: var(--danger);
+}
+
+.dream-header h2,
+.dream-section h3 {
+	margin: 0;
+}
+
+.dream-header h2 {
+	color: #f6f9fd;
+	font-size: 1.05rem;
+	font-weight: 650;
+}
+
+.dream-toolbar {
+	display: flex;
+	align-items: end;
+	gap: 0.35rem;
+}
+
+.dream-icon-button {
+	display: grid;
+	place-items: center;
+	width: 1.85rem;
+	height: 1.85rem;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--muted-text);
+	cursor: pointer;
+}
+
+.dream-icon-button:hover,
+.dream-icon-button:focus-visible {
+	border-color: var(--dream-divider);
+	background: var(--dream-raised);
+	color: #ffffff;
+}
+
+.dream-icon-button svg {
+	width: 1rem;
+	height: 1rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.7;
+}
+
+.dream-section {
+	margin-bottom: 1.45rem;
+}
+
+.dream-section h3,
+.dream-field > span {
+	display: block;
+	margin-bottom: 0.4rem;
+	color: var(--dream-muted);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.66rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.dream-source-meta,
+.dream-help,
+.dream-empty {
+	color: var(--dream-muted);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+}
+
+.dream-help {
+	margin: 0 0 0.55rem;
+}
+
+.dream-source {
+	max-height: 13rem;
+	overflow: auto;
+	margin: 0.5rem 0 0;
+	padding: 0.85rem 0.95rem;
+	border: 1px solid var(--dream-divider);
+	border-radius: 0.5rem;
+	background: rgba(10, 20, 31, 0.28);
+	font-size: 0.88rem;
+	white-space: pre-wrap;
+	line-height: 1.55;
+}
+
+.dream-action-link {
+	align-self: flex-start;
+	margin: 0.45rem 0 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--dream-accent);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.signal-list {
+	display: grid;
+	gap: 1rem;
+}
+
+.signal-item {
+	border: 0;
+	background: transparent;
+}
+
+.signal-row {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.signal-heading {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 0.55rem;
+	padding: 0.15rem 0;
+	color: #eff5fc;
+	font-weight: 600;
+}
+
+.signal-heading span {
+	margin-left: auto;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.72rem;
+}
+
+.signal-description {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 4.5rem;
+	margin: 0.35rem 0 0;
+	resize: vertical;
+	overflow: auto;
+	padding: 0.45rem 0;
+	border: 0;
+	border-bottom: 1px solid var(--dream-divider);
+	border-radius: 0;
+	background: transparent;
+	color: var(--app-text);
+	font: inherit;
+	line-height: 1.5;
+	field-sizing: content;
+}
+
+.signal-remove {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--muted-text);
+	cursor: pointer;
+}
+
+.dream-field {
+	display: block;
+	margin-bottom: 1rem;
+}
+
+.dream-field textarea {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 6.5rem;
+	resize: none;
+	overflow: hidden;
+	padding: 0.65rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.6rem;
+	outline: 0;
+	background: #0d141d;
+	color: var(--app-text);
+	font: inherit;
+	line-height: 1.5;
+	field-sizing: content;
+}
+
+.dream-field input {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.6rem;
+	outline: 0;
+	background: #0d141d;
+	color: var(--app-text);
+	font: inherit;
+}
+
+.dream-exegesis {
+	flex: 0 0 auto;
+	min-height: 0;
+}
+
+.dream-exegesis textarea {
+	min-height: 18rem;
+}
+
+.dream-save {
+	justify-content: flex-start;
+	gap: 1rem;
+	padding: 0.8rem 0 0.2rem;
+}
+
+.chat-panel {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+	padding: 0.9rem 1rem 1rem;
+}
+
+.chat-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-height: 2rem;
+	margin-bottom: 0.75rem;
+	padding-bottom: 0.55rem;
+	border-bottom: 1px solid var(--panel-border);
+}
+
+.chat-header h2 {
+	margin: 0;
+	color: var(--app-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.82rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.chat-conversation-header h2 {
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
+	font-size: 0.78rem;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-transform: none;
+}
+
+.chat-header-button {
+	display: grid;
+	place-items: center;
+	width: 1.9rem;
+	height: 1.9rem;
+	padding: 0;
+	border: 0;
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--muted-text);
+	font-family: "Segoe UI Symbol", "Segoe UI", sans-serif;
+	font-size: 1.35rem;
+	cursor: pointer;
+}
+
+.chat-header > h2:first-child {
+	margin-right: auto;
+}
+
+.chat-header-button:hover,
+.chat-header-button:focus-visible {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.chat-catalogue-list {
+	display: grid;
+	align-content: start;
+	gap: 0.15rem;
+	overflow: auto;
+}
+
+.chat-catalogue-item {
+	min-width: 0;
+	display: grid;
+	gap: 0.25rem;
+	width: 100%;
+	padding: 0.65rem 0.45rem;
+	border: 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--app-text);
+	text-align: left;
+	cursor: pointer;
+}
+
+.chat-catalogue-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 1.9rem;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.chat-delete-button {
+	flex-shrink: 0;
+}
+
+.chat-delete-button svg {
+	width: 16px;
+	height: 16px;
+}
+
+.chat-delete-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+}
+
+.chat-catalogue-item:hover,
+.chat-catalogue-item:focus-visible {
+	background: var(--accent-soft);
+}
+
+.chat-catalogue-item strong,
+.chat-catalogue-item span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.chat-catalogue-item strong {
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+.chat-catalogue-item span,
+.chat-catalogue-empty {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.68rem;
+}
+
+.chat-catalogue-empty {
+	margin: 0.5rem 0;
+	line-height: 1.45;
+}
+
+.pattern-panel {
+	flex: 1;
+	min-width: 0;
+	overflow: auto;
+	padding: 0.9rem 1rem 1rem;
+}
+
+.pattern-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.6rem;
+	margin-bottom: 1rem;
+}
+
+.pattern-header h2 {
+	margin: 0;
+	font-size: 1.05rem;
+}
+
+.pattern-header span,
+.pattern-context span,
+.pattern-locator,
+.pattern-forms,
+.pattern-observation {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.7rem;
+}
+
+.pattern-scope {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--panel-border);
+}
+
+.pattern-scope button {
+	border: 0;
+	background: transparent;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.7rem;
+	cursor: default;
+}
+
+.pattern-scope button::after {
+	margin-left: 0.25rem;
+	color: var(--panel-border);
+	content: "/";
+}
+
+.pattern-scope button:last-child::after {
+	content: "";
+}
+
+.pattern-scope button.selected {
+	color: var(--accent);
+}
+
+.pattern-context {
+	display: grid;
+	gap: 0.2rem;
+	padding: 0.9rem 0;
+}
+
+.pattern-context strong {
+	font-size: 0.88rem;
+}
+
+.pattern-filter {
+	justify-self: start;
+	margin-top: 0.2rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--accent);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.72rem;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+	cursor: pointer;
+}
+
+.pattern-list {
+	display: grid;
+	gap: 0.45rem;
+}
+
+.pattern-item {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 0.35rem 0.6rem;
+	width: 100%;
+	padding: 0.7rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.55rem;
+	background: rgba(255, 255, 255, 0.02);
+	color: var(--app-text);
+	text-align: left;
+	cursor: pointer;
+}
+
+.pattern-item:hover,
+.pattern-item.selected {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+
+.pattern-item strong {
+	font-size: 0.82rem;
+}
+
+.pattern-locator {
+	color: var(--accent);
+}
+
+.pattern-forms {
+	grid-column: 1 / -1;
+}
+
+.pattern-form {
+	display: inline-block;
+	margin-right: 0.35rem;
+	padding: 0.1rem 0.3rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.25rem;
+	color: var(--app-text);
+	font-family: "Palatino Linotype", "Cambria", serif;
+}
+
+.pattern-observation {
+	grid-column: 1 / -1;
+	line-height: 1.45;
+}
+
+.pattern-empty {
+	margin: 0;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+	line-height: 1.45;
+}
+
+.chat-error {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.75rem;
+	line-height: 1.45;
+}
+
+.chat-transcript {
+	display: grid;
+	align-content: start;
+	flex: 1;
+	gap: 0.7rem;
+	min-height: 0;
+	margin-top: 0;
+	padding: 0.1rem 0.1rem 1rem;
+	overflow: auto;
+}
+
+.chat-error {
+	padding: 0.7rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.55rem;
+	background: rgba(255, 255, 255, 0.035);
+}
+
+.chat-message {
+	max-width: 92%;
+	padding: 0.2rem 0.1rem;
+}
+
+.chat-message.user {
+	justify-self: end;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.85rem 0.85rem 0.2rem;
+	background: #202d3d;
+}
+
+.chat-message.assistant {
+	justify-self: start;
+}
+
+.chat-message.pending .chat-text {
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.78rem;
+	font-style: italic;
+}
+
+.chat-message.tool {
+	width: calc(100% - 1.4rem);
+	padding: 0.65rem 0.7rem;
+	border: 1px solid var(--accent);
+	border-radius: 0.55rem;
+	background: var(--accent-soft);
+}
+
+.tool-result-label {
+	display: block;
+	margin-bottom: 0.35rem;
+	color: var(--accent);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.68rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.chat-text {
+	white-space: pre-wrap;
+	line-height: 1.5;
+}
+
+.chat-error {
+	margin-bottom: 0.65rem;
+	color: var(--danger);
+}
+
+.chat-form {
+	position: relative;
+	z-index: 5;
+	display: grid;
+	grid-template-rows: auto auto;
+	gap: 0.55rem;
+	padding: 0.55rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.75rem;
+	background: #0d141d;
+	pointer-events: auto;
+}
+
+.chat-form textarea {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 4rem;
+	max-height: 8rem;
+	resize: vertical;
+	padding: 0.35rem 0.2rem;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--app-text);
+}
+
+.chat-form button {
+	margin: 0;
+}
+
+.chat-composer-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.45rem;
+}
+
+.composer-spacer {
+	flex: 1;
+}
+
+.chat-composer-footer select {
+	flex: 1 1 5.5rem;
+	min-width: 0;
+	min-height: 1.9rem;
+	max-width: 7.5rem;
+	padding: 0.25rem 0.35rem;
+	border: 0;
+	border-radius: 0.35rem;
+	outline: 0;
+	background: transparent;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 0.74rem;
+}
+
+.chat-composer-footer select[data-chat-provider],
+.chat-composer-footer select[data-chat-provider] option {
+	background: var(--panel-background);
+	color: #ffffff;
+}
+
+.composer-button {
+	min-width: 1.9rem;
+	height: 1.9rem;
+	padding: 0 0.45rem;
+	border: 0;
+	border-radius: 0.45rem;
+	background: transparent;
+	color: var(--muted-text);
+	font-family: "Segoe UI", sans-serif;
+	font-size: 1.25rem;
+	cursor: pointer;
+}
+
+.send-button {
+	margin-left: auto;
+	background: #485567;
+	color: #ffffff;
+	font-size: 0.72rem;
+	pointer-events: auto;
+}
+
+.send-button:disabled {
+	opacity: 0.45;
+	cursor: wait;
+}

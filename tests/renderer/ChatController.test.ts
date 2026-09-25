@@ -198,6 +198,20 @@ describe("ChatController", function ChatControllerTests()
 		expect(store.GetMessages()).toEqual([]);
 	});
 
+	it("keeps a newer composer draft when a pending request fails", async function KeepsNewDraftAsync()
+	{
+		vi.spyOn(console, "error").mockImplementation(function IgnoreExpectedFailure(): void {});
+		vi.mocked(window.chora.StartChat).mockImplementationOnce(async function FailAfterTypingAsync(): Promise<ChatResult>
+		{
+			controller.SetDraft("My next thought");
+			throw new Error("offline");
+		});
+		await controller.SendAsync("Earlier question");
+		expect(store.GetStatus()).toBe("failed");
+		expect(store.GetDraft()).toBe("My next thought");
+		expect(store.GetMessages()).toEqual([]);
+	});
+
 	it("releases its model stream subscription", function ReleasesStreamSubscription()
 	{
 		controller.Dispose();

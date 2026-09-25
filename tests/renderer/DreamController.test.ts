@@ -45,7 +45,7 @@ describe("DreamController", function DreamControllerTests()
 		vi.useFakeTimers();
 		storage = CreateStorage();
 		saved = [];
-		vi.stubGlobal("crypto", { randomUUID: vi.fn(() => `id-${Math.random()}`) });
+		let nextId = 0;
 		vi.stubGlobal("window", {
 			sessionStorage: storage,
 			chora: {
@@ -58,6 +58,11 @@ describe("DreamController", function DreamControllerTests()
 				{
 					saved = [structuredClone(dream)];
 					return structuredClone(dream);
+				}),
+				AllocateDreamId: vi.fn(async () =>
+				{
+					nextId += 1;
+					return `id-${nextId}`;
 				})
 			}
 		});
@@ -75,11 +80,11 @@ describe("DreamController", function DreamControllerTests()
 		vi.useRealTimers();
 	});
 
-	it("creates an empty Dream and orders manually-added signals by source", function CreatesAndOrdersSignals()
+	it("creates an empty Dream and orders manually-added signals by source", async function CreatesAndOrdersSignals()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s2", offset: 4 }, selectedText: "bcdef\nghij", locatorStart: null, locatorEnd: null });
-		controller.AddSignal({ documentId: "republic", start: { segmentKey: "s2", offset: 1 }, end: { segmentKey: "s2", offset: 3 }, selectedText: "hi", locatorStart: null, locatorEnd: null });
-		controller.AddSignal({ documentId: "republic", start: { segmentKey: "s1", offset: 2 }, end: { segmentKey: "s1", offset: 4 }, selectedText: "cd", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s2", offset: 4 }, selectedText: "bcdef\nghij", locatorStart: null, locatorEnd: null });
+		await controller.AddSignal({ documentId: "republic", start: { segmentKey: "s2", offset: 1 }, end: { segmentKey: "s2", offset: 3 }, selectedText: "hi", locatorStart: null, locatorEnd: null });
+		await controller.AddSignal({ documentId: "republic", start: { segmentKey: "s1", offset: 2 }, end: { segmentKey: "s1", offset: 4 }, selectedText: "cd", locatorStart: null, locatorEnd: null });
 
 		const dream = store.GetActiveDream();
 		expect(dream?.title).toBe("");
@@ -87,9 +92,9 @@ describe("DreamController", function DreamControllerTests()
 		expect(dream?.signals.map((signal) => signal.text)).toEqual(["cd", "hi"]);
 	});
 
-	it("does not expose mutable active Dream state", function ProtectsActiveDreamState()
+	it("does not expose mutable active Dream state", async function ProtectsActiveDreamState()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "bc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "bc", locatorStart: null, locatorEnd: null });
 		const snapshot = store.GetActiveDream();
 		const revision = store.GetRevision();
 
@@ -102,9 +107,9 @@ describe("DreamController", function DreamControllerTests()
 		expect(store.GetRevision()).toBe(revision);
 	});
 
-	it("extends a Dream source passage in canonical source order", function ExtendsSource()
+	it("extends a Dream source passage in canonical source order", async function ExtendsSource()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "bc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "bc", locatorStart: null, locatorEnd: null });
 
 		controller.ExtendSource({ documentId: "republic", start: { segmentKey: "s2", offset: 1 }, end: { segmentKey: "s2", offset: 4 }, selectedText: "hij", locatorStart: null, locatorEnd: null });
 
@@ -117,7 +122,7 @@ describe("DreamController", function DreamControllerTests()
 
 	it("debounces Dream draft persistence while preserving recovery", async function RestoresDraft()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
 		const setItem = vi.spyOn(storage, "setItem");
 		controller.UpdateExegesis("A remembered perception.");
 		controller.UpdateExegesis("A remembered perception growing.");
@@ -135,7 +140,7 @@ describe("DreamController", function DreamControllerTests()
 
 	it("saves the complete Dream and reports a saved state", async function SavesDream()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
 		controller.UpdateExegesis("A perception.");
 
 		await controller.SaveAsync();
@@ -147,7 +152,7 @@ describe("DreamController", function DreamControllerTests()
 
 	it("autosaves a changed Dream after the editing pause", async function AutosavesDream()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
 		controller.UpdateExegesis("A perception preserved automatically.");
 
 		await vi.advanceTimersByTimeAsync(749);
@@ -160,7 +165,7 @@ describe("DreamController", function DreamControllerTests()
 
 	it("saves a dirty Dream before the editor closes", async function SavesOnClose()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
 		controller.UpdateExegesis("Saved while closing.");
 
 		await controller.CloseAsync();
@@ -172,7 +177,7 @@ describe("DreamController", function DreamControllerTests()
 
 	it("keeps a dirty Dream open when the close save fails", async function PreservesFailedClose()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
 		controller.UpdateExegesis("This must not be discarded.");
 		vi.mocked(window.chora.SaveDream).mockRejectedValueOnce(new Error("Disk unavailable"));
 
@@ -185,7 +190,7 @@ describe("DreamController", function DreamControllerTests()
 
 	it("deletes the active Dream and refreshes the catalogue", async function DeletesDream()
 	{
-		controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
 		await controller.SaveAsync();
 
 		await controller.DeleteAsync();

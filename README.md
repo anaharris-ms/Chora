@@ -24,6 +24,10 @@ A Dream contains an immutable source passage, zero or more manually selected sig
 
 The source passage remains immutable inside the editor. To extend it, select more source text in the Document panel and choose **Add to Dream**. Signal descriptions are optional, multiple signals retain source order, and a newly added signal is brought into view automatically. Dreams may be deleted explicitly from the editor.
 
+Signals and Exegesis use a shared Milkdown editor with bold, italic, lists, quotations, links, and undo/redo. Formatting is saved as Markdown in the existing description and reflection fields. Editors retain their contents and undo history when switching tabs or collapsing a signal, and the lower-right grip resizes the editing area vertically. Links are editable but do not navigate from the editor; remote images are displayed as alt text without fetching them.
+
+Each signal has a **Chat with the model** icon. It opens Chat focused on that signal without sending a message. The signal's words appear above the conversation, and the model receives its complete description, including current unsaved edits, with the Dream's source as context. That focus stays with the conversation when navigating away and when reopening a saved chat. Selecting a different signal starts a new conversation while preserving the unsent draft; selecting the same signal returns to the current conversation. A response in progress must finish before switching signals.
+
 ## Chat context
 
 Chat mode is inferred rather than selected:
@@ -44,7 +48,9 @@ New Dreams are readable Markdown files under:
 Documents\Chora\Dreams\<work-id>\<title>--<id>.md
 ```
 
-Untitled Dreams use `dream--<id>.md`. Existing libraries under `Documents\Chora\Memories` and `Documents\Eigen\Memories` are read without being moved or rewritten. The main process owns persistence; the renderer has no filesystem access. Writes use a temporary file followed by an atomic rename.
+Untitled Dreams use `dream--<id>.md`. The main process owns persistence; the renderer has no filesystem access. Writes use a temporary file followed by an atomic rename.
+
+Dream catalogue items show the source's full locator range. A Dream icon beside a Stephanus label opens the catalogue filtered to Dreams whose saved source spans overlap that passage, including intermediate passages. Signals do not affect this association. The icon's tooltip reports the number of matching Dreams. Passage filtering clears the previous keyword query, can be narrowed with search, and has an explicit clear button. It does not open an editor or move the reading position; opening a different work clears the passage filter.
 
 ## Architecture
 
@@ -67,6 +73,8 @@ npm install
 npm run dev:mock
 ```
 
+Milkdown 7.22 publishes extensionless TypeScript declaration imports. The `postinstall` script runs `scripts/FixMilkdownDeclarations.mjs` to repair only installed Milkdown declaration specifiers for this project's NodeNext resolution. Runtime packages and compiler settings are unchanged. If dependencies are installed with scripts disabled, run `npm run postinstall` before typechecking.
+
 Kimi requires a local `.env.local`:
 
 ```text
@@ -80,6 +88,8 @@ KIMI_MAX_COMPLETION_TOKENS=3000
 Never commit `.env.local` or provider credentials.
 
 ### VS Code Copilot Relay
+
+Saved chats have a trash button in chat history and in the conversation header. Deletion requires confirmation, is permanent, and is unavailable while a reply is in progress. Deleting a chat does not delete its Dream or signals, and an unsent composer draft is retained.
 
 The Relay provider uses the GitHub Copilot session already active in a local VS Code Extension Development Host. Configure the same non-empty secret in both places:
 
@@ -103,7 +113,7 @@ Start Chora's `Chora Copilot Relay: Launch Extension Host` debug profile, then r
 npm run dev:relay
 ```
 
-When the Relay is running, the model selector lists every Copilot model family available in that VS Code session. `COPILOT_RELAY_MODEL_FAMILY` is only the fallback used while the Relay catalogue is unavailable. A selected model is saved with its conversation and cannot change mid-conversation. The Relay is loopback-only and rejects requests without the shared secret.
+When the Relay is running, the model selector lists every Copilot model family available in that VS Code session. `COPILOT_RELAY_MODEL_FAMILY` is only the fallback used while the Relay catalogue is unavailable. A selected model is saved with its conversation. Choosing another model in a saved chat asks for confirmation and starts a new chat, keeping the selected signal and unsent draft; the original conversation remains in history. Model switching is disabled while a response is in progress. The Relay is loopback-only and rejects requests without the shared secret.
 
 Verification commands:
 

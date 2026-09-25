@@ -15,28 +15,36 @@ interface ReadingPreferences
 // Owns global reading settings and applies them to the document root as shared CSS variables.
 export class ReadingSettingsStore
 {
+	// Local storage key for persisted reading preferences.
 	private static readonly StorageKey = "chora:reading-settings";
+	// Font stacks applied for each reading font choice.
 	private static readonly SerifStack = `"Iowan Old Style", "Palatino Linotype", Georgia, serif`;
 	private static readonly SansStack = `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+	// Bounds enforced on the reading font size.
 	private static readonly MinimumFontSize = 14;
 	private static readonly MaximumFontSize = 32;
+	// Currently applied reading preferences.
 	private preferences: ReadingPreferences = this.Load();
 
+	// Returns the current reading font size in pixels.
 	public GetFontSize(): number
 	{
 		return this.preferences.fontSize;
 	}
 
+	// Returns the current reading font family.
 	public GetFont(): ReadingFont
 	{
 		return this.preferences.font;
 	}
 
+	// Returns the current appearance.
 	public GetAppearance(): Appearance
 	{
 		return this.preferences.appearance;
 	}
 
+	// Changes the reading font size by a step, clamped to the allowed range.
 	public ChangeFontSize(delta: number): void
 	{
 		const next = Math.max(ReadingSettingsStore.MinimumFontSize, Math.min(ReadingSettingsStore.MaximumFontSize, this.preferences.fontSize + delta));
@@ -45,6 +53,7 @@ export class ReadingSettingsStore
 		this.Apply();
 	}
 
+	// Sets the reading font family.
 	public SetFont(font: ReadingFont): void
 	{
 		this.preferences.font = font;
@@ -52,6 +61,7 @@ export class ReadingSettingsStore
 		this.Apply();
 	}
 
+	// Toggles between light and dark appearance.
 	public ToggleAppearance(): void
 	{
 		this.preferences.appearance = this.preferences.appearance === "light" ? "dark" : "light";
@@ -69,6 +79,7 @@ export class ReadingSettingsStore
 		root.dataset.theme = this.preferences.appearance;
 	}
 
+	// Reads persisted preferences from local storage, falling back to defaults when missing or invalid.
 	private Load(): ReadingPreferences
 	{
 		const preferences: ReadingPreferences = { fontSize: 18, font: "serif", appearance: "light" };
@@ -92,6 +103,7 @@ export class ReadingSettingsStore
 		return preferences;
 	}
 
+	// Persists the current preferences to local storage.
 	private Save(): void
 	{
 		try

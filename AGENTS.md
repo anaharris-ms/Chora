@@ -76,7 +76,6 @@ Read `CODING_STANDARDS.md` first. This project uses the C#-style rules described
 - The renderer has no direct filesystem or network access. Use the IPC channels defined in `src/shared/contracts/IpcChannels.ts`.
 - API keys and provider configuration live only in the main process and `.env.local`.
 - Dreams are local Markdown files under `Documents/Chora/Dreams` (main process owns persistence).
-- Existing `Documents/Chora/Memories` and `Documents/Eigen/Memories` folders are read as legacy Dream libraries; do not move or rewrite them implicitly.
 - The corpus lives in `corpus/generated/` and is built from scripts in `scripts/corpus/`.
 
 ## Configuration

@@ -1,4 +1,4 @@
-import type { Dream as DreamRecord, DreamSignal as DreamSignalRecord, SourceSelection } from "../../shared/dreams/DreamTypes.js";
+import type { Dream as DreamRecord, DreamSignal as DreamSignalRecord, DreamResonance as DreamResonanceRecord, ResonanceTarget as ResonanceTargetRecord, SourceSelection } from "../../shared/dreams/DreamTypes.js";
 import { DreamSignal } from "./DreamSignal.js";
 
 // Owns one reader-authored Dream and its normalized signals and links.
@@ -127,6 +127,36 @@ export class Dream
 		}
 	}
 
+	// Adds a reader-authored resonance to one owned signal.
+	public AddSignalResonance(signalId: string, resonance: DreamResonanceRecord): void
+	{
+		this.FindSignal(signalId)?.AddResonance(resonance);
+	}
+
+	// Updates one owned resonance's note.
+	public UpdateSignalResonanceNote(signalId: string, resonanceId: string, note: string): void
+	{
+		this.FindSignal(signalId)?.UpdateResonanceNote(resonanceId, note);
+	}
+
+	// Removes one resonance from an owned signal.
+	public RemoveSignalResonance(signalId: string, resonanceId: string): void
+	{
+		this.FindSignal(signalId)?.RemoveResonance(resonanceId);
+	}
+
+	// Attaches a passage target to one owned signal's resonance.
+	public AttachSignalResonanceTarget(signalId: string, resonanceId: string, target: ResonanceTargetRecord): void
+	{
+		this.FindSignal(signalId)?.AttachResonanceTarget(resonanceId, target);
+	}
+
+	// Removes one attached target from an owned signal's resonance.
+	public RemoveSignalResonanceTarget(signalId: string, resonanceId: string, targetId: string): void
+	{
+		this.FindSignal(signalId)?.RemoveResonanceTarget(resonanceId, targetId);
+	}
+
 	// Replaces links after removing duplicates and the Dream's own identity.
 	public SetLinkedDreamIds(linkedDreamIds: readonly string[]): void
 	{
@@ -164,6 +194,14 @@ export class Dream
 		};
 
 		return record;
+	}
+
+	// Finds an owned signal by identity, or undefined when it is not present.
+	private FindSignal(signalId: string): DreamSignal | undefined
+	{
+		const signal = this.signals.find((candidate) => candidate.ToRecord().id === signalId);
+
+		return signal;
 	}
 
 	// Normalizes source reference fields required by the current persistence schema.

@@ -16,7 +16,7 @@ export class ChoraApplication
 	private readonly library = new LibraryModule();
 // Owns the configured read-only Hermeneia Pattern boundary.
 	private readonly patterns = new PatternModule(this.library.GetService());
-// Owns primary and legacy Dream persistence for this application run.
+// Owns Dream persistence for this application run.
 	private readonly dreams: DreamModule;
 // Owns chat session state and its IPC boundary.
 	private readonly chat: ChatModule;
@@ -36,14 +36,16 @@ export class ChoraApplication
 		if (!this.isStarted)
 		{
 			LoadEnvironmentFiles();
-			this.library.Start();
-			this.patterns.Start();
-			this.dreams.Start();
-			this.chat.Start();
-			this.windows.Open();
-			const works = await this.library.GetService().ListAsync();
-			const menu = CreateApplicationMenu(this.windows, works);
-			Menu.setApplicationMenu(menu);
+			
+			// Start modules before opening the window so that the window can be populated with content.
+			this.StartModules();
+
+			// Open the window before building the menu so that the menu can be built with the window's context.
+			this.OpenWindow();
+
+			// Build the application menu after the Library has been started and its works have been loaded.
+			await this.BuildMenu();
+
 			this.isStarted = true;
 		}
 	}
@@ -65,5 +67,20 @@ export class ChoraApplication
 	public OpenWindow(): void
 	{
 		this.windows.Open();
+	}
+
+	private async BuildMenu(): Promise<void>
+	{
+		const works = await this.library.GetService().ListAsync();
+		const menu = CreateApplicationMenu(this.windows, works);
+		Menu.setApplicationMenu(menu);
+	}
+
+	private StartModules(): void
+	{
+		this.library.Start();
+		this.patterns.Start();
+		this.dreams.Start();
+		this.chat.Start();
 	}
 }

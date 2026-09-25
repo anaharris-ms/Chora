@@ -15,6 +15,7 @@ export class ChatIpcController
 		IPC_CHANNELS.continueChat,
 		IPC_CHANNELS.listChatConversations,
 		IPC_CHANNELS.loadChatConversation,
+		IPC_CHANNELS.deleteChatConversation,
 		IPC_CHANNELS.getChatTools,
 		IPC_CHANNELS.getConfiguredProvider,
 		IPC_CHANNELS.getProviderOptions
@@ -27,6 +28,8 @@ export class ChatIpcController
 	private readonly listConversationsHandler: () => Promise<ChatConversationSummary[]>;
 	// Bound Electron handler that reads one durable conversation.
 	private readonly loadConversationHandler: (_event: IpcMainInvokeEvent, conversationId: string) => Promise<ChatConversationSnapshot>;
+	// Bound Electron handler that deletes one saved conversation.
+	private readonly deleteConversationHandler: (_event: IpcMainInvokeEvent, conversationId: string) => Promise<void>;
 	// Bound Electron handler that reads available Chat tools.
 	private readonly toolsHandler: () => ChatToolDefinition[];
 	// Bound Electron handler that reads the configured default provider.
@@ -40,6 +43,7 @@ export class ChatIpcController
 		this.continueHandler = this.HandleContinueAsync.bind(this);
 		this.listConversationsHandler = this.HandleListConversationsAsync.bind(this);
 		this.loadConversationHandler = this.HandleLoadConversationAsync.bind(this);
+		this.deleteConversationHandler = this.HandleDeleteConversationAsync.bind(this);
 		this.toolsHandler = this.HandleGetTools.bind(this);
 		this.configuredProviderHandler = this.HandleGetConfiguredProvider.bind(this);
 		this.providerOptionsHandler = this.HandleGetProviderOptions.bind(this);
@@ -51,6 +55,7 @@ export class ChatIpcController
 		ipcMain.handle(IPC_CHANNELS.continueChat, this.continueHandler);
 		ipcMain.handle(IPC_CHANNELS.listChatConversations, this.listConversationsHandler);
 		ipcMain.handle(IPC_CHANNELS.loadChatConversation, this.loadConversationHandler);
+		ipcMain.handle(IPC_CHANNELS.deleteChatConversation, this.deleteConversationHandler);
 		ipcMain.handle(IPC_CHANNELS.getChatTools, this.toolsHandler);
 		ipcMain.handle(IPC_CHANNELS.getConfiguredProvider, this.configuredProviderHandler);
 		ipcMain.handle(IPC_CHANNELS.getProviderOptions, this.providerOptionsHandler);
@@ -111,6 +116,12 @@ export class ChatIpcController
 		const conversation = this.sessions.GetConversationAsync(conversationId);
 
 		return conversation;
+	}
+
+	// Deletes a saved conversation through its owning service.
+	private async HandleDeleteConversationAsync(_event: IpcMainInvokeEvent, conversationId: string): Promise<void>
+	{
+		await this.sessions.DeleteConversationAsync(conversationId);
 	}
 
 	// Lists available Chat tools for the renderer.

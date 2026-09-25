@@ -1,0 +1,664 @@
+/* Part of styles.css, split by topic. Import order in ../styles.css matches this file's original position — do not reorder relative to the other split files. */
+/* Shared compact layout for each left-hand workspace tab. */
+
+.left-tab-panel {
+	--left-tab-padding: 0.85rem;
+	--left-tab-title-size: 1.05rem;
+	--left-tab-meta-size: 0.72rem;
+	--left-tab-row-title-size: 0.92rem;
+	box-sizing: border-box;
+	padding: var(--left-tab-padding);
+	background: #f7f7f8;
+	color: #303238;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.left-tab-panel .catalogue-header,
+.left-tab-panel .chat-header,
+.left-tab-panel .pattern-header {
+	min-height: 2.1rem;
+	margin: 0 0 0.75rem;
+	padding: 0 0 0.55rem;
+	border-bottom: 1px solid var(--panel-border);
+}
+
+.left-tab-panel .catalogue-header h3,
+.left-tab-panel .chat-header h2,
+.left-tab-panel .pattern-header h2 {
+	color: #27292e;
+	font-size: var(--left-tab-title-size);
+	font-weight: 650;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.left-tab-panel .catalogue-header-button,
+.left-tab-panel .chat-header-button {
+	width: 1.9rem;
+	height: 1.9rem;
+	border: 1px solid #dfe1e5;
+	border-radius: 0.4rem;
+	background: #ffffff;
+	color: #68717d;
+	font-size: 1.15rem;
+}
+
+.left-tab-panel .chat-delete-button {
+	width: 24px;
+	height: 24px;
+	border: 0;
+	border-radius: 3px;
+	background: transparent;
+	color: var(--muted-text);
+	opacity: 0.55;
+}
+
+.left-tab-panel .chat-delete-button svg {
+	width: 13px;
+	height: 13px;
+}
+
+.left-tab-panel .chat-delete-button:not(:disabled):hover,
+.left-tab-panel .chat-delete-button:focus-visible {
+	background: var(--accent-soft);
+	color: var(--app-text);
+	opacity: 1;
+}
+
+.left-tab-panel .chat-delete-button:focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.left-tab-panel .chat-catalogue-row {
+	grid-template-columns: minmax(0, 1fr) 24px;
+}
+
+.left-tab-panel .chat-catalogue-item span,
+.left-tab-panel .pattern-header span {
+	font-size: var(--left-tab-meta-size);
+}
+
+/* Dreams catalogue: roomy macOS-style sidebar. */
+.left-tab-panel.dream-catalogue {
+	padding: 0;
+}
+
+.dream-catalogue-controls {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 12px 12px 24px;
+}
+
+.left-tab-panel .dream-catalogue-controls .dream-search {
+	flex: 1;
+	min-width: 0;
+	margin: 0;
+}
+
+.dream-catalogue-controls .catalogue-header-button {
+	flex: 0 0 32px;
+}
+
+.left-tab-panel .catalogue-header {
+	min-height: 58px;
+	margin: 0;
+	padding: 0 20px 0 24px;
+	border-bottom: 0;
+}
+
+.left-tab-panel .catalogue-header h3 {
+	font-size: 16px;
+	font-weight: 600;
+	letter-spacing: 0;
+}
+
+.left-tab-panel .catalogue-header-button {
+	width: 32px;
+	height: 32px;
+	border: 0;
+	border-radius: 50%;
+	background: var(--dream-raised);
+	color: var(--app-text);
+	font-size: 1rem;
+}
+
+.left-tab-panel .catalogue-header-button svg {
+	width: 18px;
+	height: 18px;
+}
+
+.left-tab-panel .dream-search {
+	min-height: 34px;
+	margin: 0 20px 16px 24px;
+	padding: 0 10px;
+	gap: 8px;
+	border: 1px solid var(--panel-border);
+	border-radius: 6px;
+	font-size: 12px;
+	background: var(--dream-raised);
+}
+
+.left-tab-panel .dream-search input {
+	height: 32px;
+	min-width: 0;
+}
+
+.left-tab-panel .dream-search svg {
+	flex: 0 0 16px;
+	width: 16px;
+	height: 16px;
+	color: var(--muted-text);
+}
+
+.left-tab-panel .dream-search-icon {
+	width: 1rem;
+	height: 1rem;
+	border-width: 0.13rem;
+}
+
+.left-tab-panel .dream-search-icon::after {
+	width: 0.47rem;
+	height: 0.13rem;
+	right: -0.36rem;
+	bottom: -0.2rem;
+}
+
+.left-tab-panel .dream-catalogue-list {
+	padding: 0 10px 16px 24px;
+}
+
+.left-tab-panel .catalogue-group {
+	border-top: 1px solid var(--panel-border);
+}
+
+.left-tab-panel .catalogue-group:first-child {
+	border-top: 0;
+}
+
+.left-tab-panel .catalogue-group-toggle {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 34px;
+	padding: 0 2px;
+	color: var(--app-text);
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0;
+}
+
+.left-tab-panel .catalogue-group-disclosure {
+	flex: 0 0 auto;
+	width: 0.48rem;
+	height: 0.48rem;
+}
+
+.left-tab-panel .catalogue-group-content {
+	padding: 0.1rem 0 0.7rem;
+}
+
+.left-tab-panel .catalogue-group-toggle + .catalogue-group-content {
+	padding-inline-start: 0;
+}
+
+.left-tab-panel .catalogue-item {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-items: center;
+	width: 100%;
+	min-height: 48px;
+	margin: 2px 0;
+	padding: 6px 24px;
+	border: 1px solid transparent;
+	border-radius: 2px;
+}
+
+.left-tab-panel .catalogue-item-marker {
+	grid-column: 1;
+	width: 0.48rem;
+	height: 0.48rem;
+}
+
+.left-tab-panel .catalogue-item-copy {
+	display: grid;
+	grid-column: 1;
+	grid-template-rows: auto auto;
+	row-gap: 5px;
+	min-width: 0;
+}
+
+.left-tab-panel .catalogue-item strong {
+	grid-row: 1;
+	min-width: 0;
+	overflow: hidden;
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.left-tab-panel .catalogue-location {
+	grid-row: 2;
+	min-width: 0;
+	overflow: hidden;
+	color: var(--muted-text);
+	font-size: 12px;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.left-tab-panel .catalogue-item.selected {
+	border-color: transparent;
+	background: var(--dream-selection);
+	color: var(--app-text);
+	box-shadow: inset 3px 0 var(--accent);
+}
+
+.left-tab-panel .catalogue-item.selected .catalogue-item-marker {
+	background: #1675dd;
+}
+
+.left-tab-panel .catalogue-item.selected .catalogue-location {
+	color: var(--muted-text);
+}
+
+.dream-header {
+	min-height: 2.55rem;
+	justify-content: flex-end;
+}
+
+.dream-title-field {
+	display: grid;
+	grid-template-columns: 3.2rem minmax(0, 1fr);
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: 1.35rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dream-title-field span {
+	color: #7f8289;
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.dream-title-field input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.45rem 0.6rem;
+	border: 1px solid #dedfe3;
+	border-radius: 0.35rem;
+	background: #ffffff;
+	color: #27292e;
+	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+	font-size: 1.1rem;
+	font-weight: 700;
+}
+
+.dream-section-heading {
+	display: flex;
+	align-items: baseline;
+	gap: 0.85rem;
+}
+
+.dream-section-action {
+	margin-left: auto;
+}
+
+.dream-source-section .dream-source-meta {
+	font-size: 0.68rem;
+}
+
+.signal-list {
+	gap: 4px;
+	border-top: 1px solid #e5e6e9;
+}
+
+.signal-item {
+	position: relative;
+	padding: 0;
+}
+
+.signal-row {
+	display: flex;
+	align-items: center;
+	box-sizing: border-box;
+	gap: 0.75rem;
+	width: 100%;
+	min-height: 28px;
+	padding: 0.15rem 0.75rem;
+	border: 0;
+	background: #f0f1f3;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.signal-heading {
+	position: relative;
+	top: -2px;
+	min-width: 0;
+	padding: 0;
+	overflow-wrap: anywhere;
+	font-size: 0.95rem;
+	line-height: 1.25;
+}
+
+.signal-disclosure {
+	flex: 0 0 auto;
+	margin-left: auto;
+	color: #767980;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 1.1rem;
+	line-height: 1;
+	transition: transform 130ms ease-out;
+}
+
+.signal-row[aria-expanded="true"] .signal-disclosure {
+	transform: rotate(90deg);
+}
+
+.signal-description {
+	min-height: 3.25rem;
+	margin: 0.5rem 0 0.75rem;
+	padding: 0.25rem 0.75rem;
+	border: 0;
+	border-radius: 0;
+	outline: 0;
+	background: transparent;
+}
+
+.signal-description::-webkit-resizer {
+	background: linear-gradient(135deg,
+		transparent 40%, var(--muted-text) 40% 48%,
+		transparent 48% 60%, var(--muted-text) 60% 68%,
+		transparent 68% 80%, var(--muted-text) 80% 88%,
+		transparent 88%) var(--dream-raised);
+	border: 2px solid var(--dream-raised);
+}
+
+.signal-remove {
+	position: absolute;
+	right: 1.6rem;
+	top: 0.82rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: #a1a4aa;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.62rem;
+	cursor: pointer;
+}
+
+.signal-row + .signal-description + .signal-remove {
+	top: 0.82rem;
+}
+
+.resonance-section {
+	padding: 0 0.75rem 0.75rem;
+}
+
+.resonance-section-heading {
+	margin: 0 0 0.4rem;
+	color: var(--dream-muted);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.66rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.resonance-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	margin-bottom: 0.4rem;
+}
+
+.resonance-item {
+	padding: 0.35rem 0.5rem;
+	border-radius: 0.35rem;
+	background: #f5f6f8;
+}
+
+.resonance-item-row {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.resonance-note {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0;
+	overflow-wrap: anywhere;
+	border: 0;
+	background: transparent;
+	text-align: left;
+	font-size: 0.85rem;
+	line-height: 1.3;
+	cursor: pointer;
+}
+
+.resonance-item-actions {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 0.2rem;
+}
+
+.resonance-icon-button {
+	width: 22px;
+	height: 22px;
+}
+
+.resonance-armed-hint {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 0.7rem;
+	white-space: nowrap;
+}
+
+.resonance-armed-cancel {
+	font-size: 0.7rem;
+}
+
+.resonance-capture {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.resonance-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0.2rem 0.4rem;
+	border: 1px solid #d7d8dc;
+	border-radius: 0.3rem;
+	font: inherit;
+	font-size: 0.85rem;
+}
+
+.resonance-targets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.3rem;
+	margin-top: 0.3rem;
+}
+
+.resonance-target-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	padding: 0.05rem 0.4rem;
+	border-radius: 999px;
+	background: #e8ebf0;
+	font-size: 0.7rem;
+}
+
+.resonance-target-jump {
+	border: 0;
+	background: transparent;
+	color: #0967c9;
+	font: inherit;
+	cursor: pointer;
+}
+
+.resonance-target-remove {
+	border: 0;
+	background: transparent;
+	color: #989ba3;
+	font: inherit;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.resonance-review-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid #e8e8ea;
+}
+
+.resonance-review-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 0;
+}
+
+.resonance-review-signal {
+	font-size: 0.75rem;
+	color: #767980;
+}
+
+.resonance-review-note {
+	overflow-wrap: anywhere;
+	font-size: 0.9rem;
+}
+
+.resonance-review-targets {
+	font-size: 0.7rem;
+	color: #989ba3;
+}
+
+.popup-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 20;
+	display: grid;
+	place-items: center;
+	background: rgba(0, 0, 0, 0.4);
+}
+
+.popup-overlay[hidden] {
+	display: none;
+}
+
+.popup-dialog {
+	display: flex;
+	flex-direction: column;
+	width: min(28rem, 90vw);
+	max-height: 80vh;
+	border: 1px solid var(--panel-border);
+	border-radius: 0.7rem;
+	background: var(--panel-background);
+	color: var(--app-text);
+	box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.3);
+}
+
+.popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid var(--panel-border);
+}
+
+.popup-header h4 {
+	margin: 0;
+	font-size: 1rem;
+}
+
+.popup-close {
+	display: grid;
+	width: 1.8rem;
+	height: 1.8rem;
+	place-items: center;
+	border: 0;
+	border-radius: 0.4rem;
+	background: transparent;
+	color: var(--muted-text);
+	font-size: 1.1rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.popup-close:hover {
+	background: var(--dream-background);
+	color: var(--app-text);
+}
+
+.popup-body {
+	overflow: auto;
+	padding: 0.3rem 0;
+}
+
+.signal-manage-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.6rem 1.25rem;
+	border-bottom: 1px solid var(--panel-border);
+}
+
+.signal-manage-item:last-child {
+	border-bottom: 0;
+}
+
+.signal-manage-item-text {
+	overflow: hidden;
+	color: var(--muted-text);
+	font-size: 0.85rem;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.signal-manage-delete {
+	display: grid;
+	flex-shrink: 0;
+	width: 1.85rem;
+	height: 1.85rem;
+	place-items: center;
+	border: 1px solid transparent;
+	border-radius: 0.35rem;
+	background: transparent;
+	color: var(--danger);
+	cursor: pointer;
+}
+
+.signal-manage-delete:hover {
+	border-color: var(--danger);
+	background: var(--danger);
+	color: var(--panel-background);
+}
+
+.signal-manage-delete svg {
+	width: 1rem;
+	height: 1rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.7;
+}

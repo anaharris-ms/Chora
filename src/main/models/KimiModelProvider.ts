@@ -231,6 +231,12 @@ class KimiStreamReader
 			usage: this.usage
 		});
 
+		if (this.finishReason === "length")
+		{
+			const error = CreateProviderError("malformed-response", "Kimi reached its output token limit before completing the reply. The incomplete answer was not saved. Try a shorter request or start a new conversation.");
+			throw error;
+		}
+
 		return payload;
 	}
 }

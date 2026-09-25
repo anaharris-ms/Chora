@@ -3,7 +3,7 @@ import type { Dream as DreamRecord } from "../../shared/dreams/DreamTypes.js";
 import { Dream } from "./Dream.js";
 import { DreamRepository, type DreamPersistenceRecord } from "./DreamRepository.js";
 
-// Owns Dreams loaded into this reader's primary and legacy Dream libraries.
+// Owns Dreams loaded into this reader's Dream library.
 export class DreamLibrary
 {
 	// Primary root used for all reader-owned writes.
@@ -17,7 +17,7 @@ export class DreamLibrary
 	// Tracks whether persistence records have been read for this application run.
 	private isLoaded = false;
 
-	// Creates a Dream aggregate root backed by the provided primary and legacy libraries.
+	// Creates a Dream aggregate root backed by the provided Dream library.
 	public constructor(primaryPath: string, repository: DreamRepository)
 	{
 		this.primaryPath = primaryPath;
@@ -57,17 +57,12 @@ export class DreamLibrary
 		return saved;
 	}
 
-	// Deletes a primary Dream while keeping legacy records read-only.
+	// Deletes a Dream record from the primary library.
 	public async DeleteAsync(dreamId: string): Promise<void>
 	{
 		await this.EnsureLoadedAsync();
 		this.ValidateIdentifier(dreamId, "Dream identifier");
 		const persistence = this.records.get(dreamId);
-
-		if (persistence !== undefined && persistence.origin === "legacy")
-		{
-			throw new Error("Legacy Dreams are read-only");
-		}
 
 		if (persistence !== undefined)
 		{
@@ -77,7 +72,7 @@ export class DreamLibrary
 		}
 	}
 
-	// Loads records once and gives primary records precedence over legacy records.
+	// Loads persisted records once for this application run.
 	private async EnsureLoadedAsync(): Promise<void>
 	{
 		if (!this.isLoaded)
@@ -115,16 +110,14 @@ export class DreamLibrary
 		return saved;
 	}
 
-	// Creates the primary persistence record owned by this library.
+	// Creates the persistence record owned by this library.
 	private CreatePersistenceRecord(dream: Dream, existing: DreamPersistenceRecord | undefined): DreamPersistenceRecord
 	{
 		const record = dream.ToRecord();
-		const useExistingPath = existing?.origin === "primary";
-		const filePath = useExistingPath ? existing.filePath : this.CreatePrimaryPath(record);
+		const filePath = existing !== undefined ? existing.filePath : this.CreatePrimaryPath(record);
 		const persistence: DreamPersistenceRecord = {
 			dream: record,
-			filePath,
-			origin: "primary"
+			filePath
 		};
 
 		this.AssertPrimaryPath(filePath);

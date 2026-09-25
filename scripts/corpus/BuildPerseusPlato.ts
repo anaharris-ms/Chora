@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { LibraryManifest, LibraryText, LibraryTextSummary } from "../../src/shared/library/LibraryTypes.js";
+import type { LibraryManifest, LibraryText, LibraryTextSummary, TextSegment } from "../../src/shared/library/LibraryTypes.js";
 import { ParseTeiWork } from "./TeiParser";
 
 interface PerseusLock
@@ -11,6 +11,21 @@ interface PerseusLock
 	text_group: string;
 	retrieved_at: string;
 	license: string;
+}
+
+interface WorkEntry
+{
+	id: string;
+	tlg: string;
+	edition: string;
+	title: string;
+	titleGreek: string;
+}
+
+interface WorksConfig
+{
+	textGroup: string;
+	works: WorkEntry[];
 }
 
 interface CorpusReport
@@ -23,38 +38,66 @@ interface CorpusReport
 	notes: string[];
 }
 
-const SourceFileName = "tlg0059.tlg030.perseus-grc2.xml";
-const SourcePath = path.join("corpus", "source", "data", "tlg0059", "tlg030", SourceFileName);
+const LockPath = path.join("corpus", "perseus-lock.json");
+const WorksConfigPath = path.join("corpus", "plato-works.json");
 const ManifestPath = path.join("corpus", "generated", "manifest.json");
-const WorkPath = path.join("corpus", "generated", "works", "republic.json");
+const WorksDirectory = path.join("corpus", "generated", "works");
 const ReportPath = path.join("corpus", "generated", "reports", "corpus-build-report.json");
 const ChecksumPath = path.join("corpus", "checksums.json");
 
-function CreateWork(parsedWork: ReturnType<typeof ParseTeiWork>, lock: PerseusLock): LibraryText
+function CreateSourceFileName(config: WorksConfig, work: WorkEntry): string
 {
+	const fileName = `${config.textGroup}.${work.tlg}.${work.edition}.xml`;
+	return fileName;
+}
+
+function CreateSourcePath(config: WorksConfig, work: WorkEntry): string
+{
+	const fileName = CreateSourceFileName(config, work);
+	const sourcePath = path.join("corpus", "source", "data", config.textGroup, work.tlg, fileName);
+	return sourcePath;
+}
+
+// Gives book-less dialogues a single synthetic chapter so every work has a consistent division.
+function ApplyChapterFallback(segments: TextSegment[]): TextSegment[]
+{
+	const hasBook = segments.some((segment) => segment.division?.kind === "book");
+	let result = segments;
+
+	if (!hasBook)
+	{
+		result = segments.map((segment) => ({ ...segment, division: { kind: "chapter", value: "1" } }));
+	}
+
+	return result;
+}
+
+function CreateWork(entry: WorkEntry, config: WorksConfig, parsedWork: ReturnType<typeof ParseTeiWork>, lock: PerseusLock): LibraryText
+{
+	const segments = ApplyChapterFallback(parsedWork.segments);
 	const work: LibraryText = {
-		id: "republic",
-		urn: "urn:cts:greekLit:tlg0059.tlg030.perseus-grc2",
-		title: "Republic",
-		titleGreek: "Πολιτεία",
+		id: entry.id,
+		urn: `urn:cts:greekLit:${config.textGroup}.${entry.tlg}.${entry.edition}`,
+		title: entry.title,
+		titleGreek: entry.titleGreek,
 		author: "Plato",
 		language: parsedWork.language,
 		edition: {
-			editor: "John Burnet",
+			editor: parsedWork.editor ?? "John Burnet",
 			title: "Platonis Opera",
-			volume: "4",
+			volume: null,
 			publisher: "Oxford University Press",
 			publicationPlace: "Oxford",
-			publicationDate: "1905"
+			publicationDate: null
 		},
 		provenance: {
 			sourceKind: "bundled",
 			repository: lock.repository,
 			commit: lock.commit,
-			sourceFile: SourceFileName,
+			sourceFile: CreateSourceFileName(config, entry),
 			license: lock.license
 		},
-		segments: parsedWork.segments
+		segments
 	};
 	return work;
 }
@@ -69,38 +112,24 @@ function CreateSummary(work: LibraryText): LibraryTextSummary
 		author: work.author,
 		language: work.language,
 		editor: work.edition.editor,
-		fileName: "republic.json"
+		fileName: `${work.id}.json`
 	};
 	return summary;
 }
 
-function CreateManifest(work: LibraryText, lock: PerseusLock): LibraryManifest
+function CreateManifest(summaries: LibraryTextSummary[], lock: PerseusLock): LibraryManifest
 {
-	const summary = CreateSummary(work);
 	const manifest: LibraryManifest = {
 		id: "plato",
 		title: "Plato Corpus",
-		author: work.author,
-		language: work.language,
+		author: "Plato",
+		language: "grc",
 		sourceRepository: lock.repository,
 		sourceCommit: lock.commit,
 		license: lock.license,
-		works: [summary]
+		works: summaries
 	};
 	return manifest;
-}
-
-function CreateReport(lock: PerseusLock): CorpusReport
-{
-	const report: CorpusReport = {
-		repository: lock.repository,
-		commit: lock.commit,
-		text_group: lock.text_group,
-		importedWorks: ["republic"],
-		omittedWorks: [],
-		notes: ["Imported from the pinned Perseus XML source."]
-	};
-	return report;
 }
 
 async function LoadJsonAsync<T>(filePath: string): Promise<T>
@@ -128,9 +157,9 @@ async function HashFileAsync(filePath: string): Promise<string>
 	return digest;
 }
 
-async function WriteChecksumsAsync(): Promise<void>
+async function WriteChecksumsAsync(workFilePaths: string[]): Promise<void>
 {
-	const generatedFiles = [ManifestPath, WorkPath, ReportPath];
+	const generatedFiles = [ManifestPath, ...workFilePaths, ReportPath];
 	const checksums: Record<string, string> = {};
 
 	for (const filePath of generatedFiles)
@@ -143,19 +172,63 @@ async function WriteChecksumsAsync(): Promise<void>
 	await WriteJsonAsync(ChecksumPath, checksums);
 }
 
+async function BuildWorkAsync(entry: WorkEntry, config: WorksConfig, lock: PerseusLock): Promise<{ summary: LibraryTextSummary; filePath: string; segmentCount: number }>
+{
+	const sourcePath = CreateSourcePath(config, entry);
+	const sourceText = await fs.readFile(sourcePath, "utf8");
+	const parsedWork = ParseTeiWork(sourceText, CreateSourceFileName(config, entry));
+	const work = CreateWork(entry, config, parsedWork, lock);
+
+	if (work.segments.length === 0) throw new Error(`Parsed ${entry.id} contains no segments.`);
+
+	const summary = CreateSummary(work);
+	const filePath = path.join(WorksDirectory, `${entry.id}.json`);
+	await WriteJsonAsync(filePath, work);
+	return { summary, filePath, segmentCount: work.segments.length };
+}
+
 async function BuildCorpusAsync(): Promise<void>
 {
-	const lock = await LoadJsonAsync<PerseusLock>(path.join("corpus", "perseus-lock.json"));
-	const sourceText = await fs.readFile(SourcePath, "utf8");
-	const parsedWork = ParseTeiWork(sourceText, SourceFileName);
-	const work = CreateWork(parsedWork, lock);
-	const manifest = CreateManifest(work, lock);
-	const report = CreateReport(lock);
+	const lock = await LoadJsonAsync<PerseusLock>(LockPath);
+	const config = await LoadJsonAsync<WorksConfig>(WorksConfigPath);
+	const summaries: LibraryTextSummary[] = [];
+	const workFilePaths: string[] = [];
+	const importedWorks: string[] = [];
+	const omittedWorks: string[] = [];
+	let totalSegments = 0;
+
+	for (const entry of config.works)
+	{
+		try
+		{
+			const built = await BuildWorkAsync(entry, config, lock);
+			summaries.push(built.summary);
+			workFilePaths.push(built.filePath);
+			importedWorks.push(entry.id);
+			totalSegments += built.segmentCount;
+			console.log(`Built ${entry.title} (${built.segmentCount} segments).`);
+		}
+		catch (error)
+		{
+			const message = error instanceof Error ? error.message : "unknown error";
+			omittedWorks.push(entry.id);
+			console.warn(`Skipped ${entry.title}: ${message}`);
+		}
+	}
+
+	const manifest = CreateManifest(summaries, lock);
+	const report: CorpusReport = {
+		repository: lock.repository,
+		commit: lock.commit,
+		text_group: lock.text_group,
+		importedWorks,
+		omittedWorks,
+		notes: ["Imported from the pinned Perseus XML sources.", "Book-less dialogues use a single synthetic chapter."]
+	};
 	await WriteJsonAsync(ManifestPath, manifest);
-	await WriteJsonAsync(WorkPath, work);
 	await WriteJsonAsync(ReportPath, report);
-	await WriteChecksumsAsync();
-	console.log(`Generated ${work.segments.length} Republic segments.`);
+	await WriteChecksumsAsync(workFilePaths);
+	console.log(`Generated ${importedWorks.length} works and ${totalSegments} segments (${omittedWorks.length} omitted).`);
 }
 
 BuildCorpusAsync().catch((error: unknown) =>

@@ -1,12 +1,11 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import type { LibraryManifest, LibraryText, LibraryTextSummary } from "../../shared/library/LibraryTypes.js";
-import { ResolveResourcePath } from "../bootstrap/ResourcePaths.js";
+import { ResolveCorpusPath } from "../bootstrap/ResourcePaths.js";
 
 export class LibraryRepository
 {
-	private static readonly ManifestPath = path.join("corpus", "generated", "manifest.json");
-	private static readonly TextsPath = path.join("corpus", "generated", "works");
+	private static readonly ManifestFile = "manifest.json";
+	private static readonly TextsDirectory = "works";
 
 	public async ListAsync(): Promise<LibraryTextSummary[]>
 	{
@@ -32,7 +31,7 @@ export class LibraryRepository
 			throw new Error(`No Library text matches ${textId}`);
 		}
 
-		const textPath = ResolveResourcePath(LibraryRepository.TextsPath, `${textId}.json`);
+		const textPath = ResolveCorpusPath(LibraryRepository.TextsDirectory, `${textId}.json`);
 		const content = await fs.readFile(textPath, "utf8");
 		const text = JSON.parse(content) as LibraryText;
 		return text;
@@ -40,7 +39,7 @@ export class LibraryRepository
 
 	private async LoadManifestAsync(): Promise<LibraryManifest>
 	{
-		const manifestPath = ResolveResourcePath(LibraryRepository.ManifestPath);
+		const manifestPath = ResolveCorpusPath(LibraryRepository.ManifestFile);
 		const content = await fs.readFile(manifestPath, "utf8");
 		const manifest = JSON.parse(content) as LibraryManifest;
 		return manifest;

@@ -10,21 +10,48 @@ interface PerseusLock
 	license: string;
 }
 
-const LockPath = path.join("corpus", "perseus-lock.json");
-const SourceFileName = "tlg0059.tlg030.perseus-grc2.xml";
-const SourceDirectory = path.join("corpus", "source", "data", "tlg0059", "tlg030");
-
-function CreateSourceUrl(lock: PerseusLock): string
+interface WorkEntry
 {
-	const sourceUrl = `https://raw.githubusercontent.com/${lock.repository}/${lock.commit}/data/tlg0059/tlg030/${SourceFileName}`;
+	id: string;
+	tlg: string;
+	edition: string;
+	title: string;
+	titleGreek: string;
+}
+
+interface WorksConfig
+{
+	textGroup: string;
+	works: WorkEntry[];
+}
+
+const LockPath = path.join("corpus", "perseus-lock.json");
+const WorksConfigPath = path.join("corpus", "plato-works.json");
+
+function CreateSourceFileName(config: WorksConfig, work: WorkEntry): string
+{
+	const fileName = `${config.textGroup}.${work.tlg}.${work.edition}.xml`;
+	return fileName;
+}
+
+function CreateSourceUrl(lock: PerseusLock, config: WorksConfig, work: WorkEntry): string
+{
+	const fileName = CreateSourceFileName(config, work);
+	const sourceUrl = `https://raw.githubusercontent.com/${lock.repository}/${lock.commit}/data/${config.textGroup}/${work.tlg}/${fileName}`;
 	return sourceUrl;
 }
 
-async function LoadLockAsync(): Promise<PerseusLock>
+function CreateSourceDirectory(config: WorksConfig, work: WorkEntry): string
 {
-	const lockText = await fs.readFile(LockPath, "utf8");
-	const lock = JSON.parse(lockText) as PerseusLock;
-	return lock;
+	const directory = path.join("corpus", "source", "data", config.textGroup, work.tlg);
+	return directory;
+}
+
+async function LoadJsonAsync<T>(filePath: string): Promise<T>
+{
+	const text = await fs.readFile(filePath, "utf8");
+	const value = JSON.parse(text) as T;
+	return value;
 }
 
 async function LoadSourceAsync(sourceUrl: string): Promise<string>
@@ -33,22 +60,36 @@ async function LoadSourceAsync(sourceUrl: string): Promise<string>
 
 	if (!response.ok)
 	{
-		throw new Error(`Corpus fetch failed with status ${response.status}.`);
+		throw new Error(`Corpus fetch failed with status ${response.status} for ${sourceUrl}.`);
 	}
 
 	const sourceText = await response.text();
 	return sourceText;
 }
 
+async function FetchWorkAsync(lock: PerseusLock, config: WorksConfig, work: WorkEntry): Promise<void>
+{
+	const sourceUrl = CreateSourceUrl(lock, config, work);
+	const sourceText = await LoadSourceAsync(sourceUrl);
+	const directory = CreateSourceDirectory(config, work);
+	const fileName = CreateSourceFileName(config, work);
+	const targetPath = path.join(directory, fileName);
+	await fs.mkdir(directory, { recursive: true });
+	await fs.writeFile(targetPath, sourceText, "utf8");
+	console.log(`Fetched ${work.title} to ${targetPath}.`);
+}
+
 async function FetchCorpusAsync(): Promise<void>
 {
-	const lock = await LoadLockAsync();
-	const sourceUrl = CreateSourceUrl(lock);
-	const sourceText = await LoadSourceAsync(sourceUrl);
-	const targetPath = path.join(SourceDirectory, SourceFileName);
-	await fs.mkdir(SourceDirectory, { recursive: true });
-	await fs.writeFile(targetPath, sourceText, "utf8");
-	console.log(`Corpus source written to ${targetPath}.`);
+	const lock = await LoadJsonAsync<PerseusLock>(LockPath);
+	const config = await LoadJsonAsync<WorksConfig>(WorksConfigPath);
+
+	for (const work of config.works)
+	{
+		await FetchWorkAsync(lock, config, work);
+	}
+
+	console.log(`Fetched ${config.works.length} Plato works.`);
 }
 
 FetchCorpusAsync().catch((error: unknown) =>

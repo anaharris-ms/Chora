@@ -1,5 +1,33 @@
-import { Menu, type MenuItemConstructorOptions } from "electron";
+import { Menu, type BrowserWindow, type ContextMenuParams, type MenuItemConstructorOptions } from "electron";
 import type { SelectionAction } from "../../shared/library/SelectionTypes.js";
+
+// Shows the native editing menu, including spelling suggestions, for a right-clicked editable field.
+export function ShowEditContextMenu(window: BrowserWindow, params: ContextMenuParams): void
+{
+	const webContents = window.webContents;
+	const menuTemplate: MenuItemConstructorOptions[] = [];
+
+	if (params.misspelledWord.length > 0)
+	{
+		for (const suggestion of params.dictionarySuggestions)
+		{
+			menuTemplate.push({ label: suggestion, click: () => webContents.replaceMisspelling(suggestion) });
+		}
+		if (params.dictionarySuggestions.length === 0) menuTemplate.push({ label: "No suggestions", enabled: false });
+		menuTemplate.push({ type: "separator" });
+		menuTemplate.push({ label: "Add to dictionary", click: () => webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord) });
+		menuTemplate.push({ type: "separator" });
+	}
+
+	menuTemplate.push({ role: "cut", enabled: params.editFlags.canCut });
+	menuTemplate.push({ role: "copy", enabled: params.editFlags.canCopy });
+	menuTemplate.push({ role: "paste", enabled: params.editFlags.canPaste });
+	menuTemplate.push({ type: "separator" });
+	menuTemplate.push({ role: "selectAll", enabled: params.editFlags.canSelectAll });
+
+	const menu = Menu.buildFromTemplate(menuTemplate);
+	menu.popup({ window });
+}
 
 export async function ShowSelectionContextMenu(): Promise<SelectionAction>
 {
@@ -25,6 +53,13 @@ export async function ShowSelectionContextMenu(): Promise<SelectionAction>
 				click: () =>
 				{
 					resolve("add-dream-signal");
+				}
+			},
+			{
+				label: "Attach to Resonance",
+				click: () =>
+				{
+					resolve("attach-resonance-target");
 				}
 			},
 			{ type: "separator" },

@@ -10,30 +10,7 @@ export interface BrowserWindowProvider
 	GetWindow(): BrowserWindow | null;
 }
 
-function CreateLibraryItems(windows: BrowserWindowProvider, works: LibraryTextSummary[]): MenuItemConstructorOptions[]
-{
-	const menuItems: MenuItemConstructorOptions[] = [];
-
-	for (const work of works)
-	{
-		menuItems.push({
-			label: work.title,
-			click: () =>
-			{
-				const window = windows.GetWindow();
-
-				if (window)
-				{
-					window.webContents.send(IPC_CHANNELS.selectLibraryText, work.id);
-				}
-			}
-		});
-	}
-
-	return menuItems;
-}
-
-export function CreateApplicationMenu(windows: BrowserWindowProvider, works: LibraryTextSummary[]): Menu
+export function CreateApplicationMenu(windows: BrowserWindowProvider, _works: LibraryTextSummary[]): Menu
 {
 	const externalTexts = new ExternalTextLoader();
 	const menuTemplate: MenuItemConstructorOptions[] = [
@@ -69,10 +46,6 @@ export function CreateApplicationMenu(windows: BrowserWindowProvider, works: Lib
 					role: "quit"
 				}
 			]
-		},
-		{
-			label: "Library",
-			submenu: CreateLibraryItems(windows, works)
 		}
 	];
 	const menu = Menu.buildFromTemplate(menuTemplate);

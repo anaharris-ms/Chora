@@ -16,6 +16,8 @@ export interface TextChatContext
 
 export interface DreamChatContent
 {
+	// Signal explicitly selected by the reader as the conversation's focus.
+	focusedSignal?: { id: string; text: string; description: string };
 	id: string;
 	title: string;
 	exegesis: string;
@@ -61,6 +63,8 @@ export interface ChatMessage
 // Serializable record representing one reader-owned conversation.
 export interface ChatConversationSnapshot
 {
+	// Explicit signal focus retained when a saved conversation is reopened.
+	signalContext?: DreamChatContext;
 	// Stable identifier assigned to the conversation.
 	id: string;
 	// Reader-facing title derived from the first exchange.

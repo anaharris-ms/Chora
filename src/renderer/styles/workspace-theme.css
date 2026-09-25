@@ -1,0 +1,1244 @@
+/* Part of styles.css, split by topic. Import order in ../styles.css matches this file's original position — do not reorder relative to the other split files. */
+/* The reading workspace uses a quiet, light desktop surface with native macOS-like controls. */
+
+:root {
+	color-scheme: light;
+	--app-background: #f7f7f8;
+	--panel-background: #f5f5f7;
+	--dream-background: #ffffff;
+	--dream-raised: #f7f8fa;
+	--dream-divider: #e3e4e8;
+	--dream-muted: #73757d;
+	--dream-accent: #0a67d7;
+	--dream-selection: #dcecff;
+	--panel-border: #e2e3e7;
+	--app-text: #24262b;
+	--muted-text: #777a83;
+	--accent: #0a67d7;
+	--accent-soft: #dcecff;
+	--danger: #c83d3d;
+	--reader-background: #ffffff;
+	--reader-foreground: #303136;
+}
+
+html,
+body {
+	background: var(--app-background);
+	color: var(--app-text);
+	font-family: var(--ui-font);
+}
+
+.shell {
+	background: #ffffff;
+}
+
+.left-panel {
+	flex-direction: column;
+	border-right-color: var(--panel-border);
+	background: #f7f7f8;
+}
+
+.workspace-views {
+	display: flex;
+	flex: 0 0 auto;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding: 6px 12px;
+	border-bottom: 1px solid var(--panel-border);
+}
+
+.workspace-views .activity-button {
+	width: auto;
+	height: 28px;
+	padding: 0 8px;
+	border-radius: 0;
+	font: 12px/1 var(--ui-font);
+	color: var(--muted-text);
+}
+
+.workspace-views .activity-button.selected {
+	background: transparent;
+	color: var(--app-text);
+	box-shadow: inset 0 -1px var(--accent);
+}
+
+.right-panel {
+	border-left-color: var(--panel-border);
+	background: #ffffff;
+}
+
+.activity-rail {
+	padding-top: 0.9rem;
+	border-right-color: var(--panel-border);
+	background: #fafafa;
+}
+
+.activity-button {
+	border-radius: 0.42rem;
+	color: #6c6e75;
+}
+
+.activity-button:hover,
+.activity-button.selected {
+	border-color: transparent;
+	background: #e3e9f1;
+	color: #1769b0;
+}
+
+.activity-spacer {
+	flex: 1;
+}
+
+.appearance-button {
+	margin-bottom: 0.25rem;
+}
+
+.center-panel {
+	background: #ffffff;
+}
+
+#readingPane {
+	background: #ffffff;
+	box-shadow: inset 1px 0 0 #f0f0f2;
+}
+
+.reader-toolbar {
+	max-width: none;
+	margin: -2.25rem -2rem 1.7rem;
+	padding: 0.7rem 2rem;
+	border: 0;
+	border-bottom: 1px solid #ececef;
+	border-radius: 0;
+	background: rgba(255, 255, 255, 0.96);
+	box-shadow: none;
+}
+
+.reader-control,
+.reader-control select {
+	color: #3c3e44;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.reader-control select {
+	border-color: #e1e2e5;
+	background: #fafafa;
+}
+
+.work-header h1 {
+	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+	font-size: 1.35rem;
+	font-weight: 700;
+}
+
+.text-body {
+	color: #303136;
+}
+
+.dream-catalogue {
+	padding: 0.85rem 0.55rem 1rem;
+	background: #f7f7f8;
+}
+
+.dream-catalogue h3 {
+	color: #27292e;
+	font-size: 0.86rem;
+}
+
+.catalogue-header {
+	margin: 0 0.35rem 0.45rem;
+	padding: 0 0.25rem 0.6rem;
+	border-bottom-color: var(--panel-border);
+}
+
+.catalogue-group h4,
+.catalogue-group-toggle {
+	background: #f7f7f8;
+	color: #777a82;
+	font-size: 0.65rem;
+	letter-spacing: 0.07em;
+}
+
+.catalogue-group-toggle {
+	padding: 0.65rem 0.55rem 0.35rem;
+}
+
+.catalogue-item {
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 0.3rem 0.65rem;
+	min-height: 2rem;
+	padding: 0.46rem 0.55rem;
+	border-radius: 0.35rem;
+	color: #383a40;
+}
+
+.catalogue-item:hover,
+.catalogue-item:focus-visible,
+.catalogue-item.selected {
+	background: #d9eaff;
+	color: #075bad;
+}
+
+.catalogue-item.selected {
+	box-shadow: none;
+}
+
+.catalogue-item strong {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.74rem;
+	font-weight: 600;
+}
+
+.catalogue-item span {
+	color: #8b8d94;
+	font-size: 0.62rem;
+}
+
+.dream-panel {
+	padding: 1.55rem clamp(1.5rem, 3vw, 3rem) 2.75rem;
+	background: #ffffff;
+	color: #292b30;
+	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+
+.dream-header {
+	top: -1.55rem;
+	margin: 0 -0.2rem 1.5rem;
+	padding: 0.85rem 0.2rem 0.85rem;
+	border-bottom-color: #e7e7e9;
+	background: rgba(255, 255, 255, 0.97);
+}
+
+.dream-header h2 {
+	color: #23252a;
+	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+	font-size: 1.35rem;
+	font-weight: 700;
+}
+
+.dream-toolbar-status,
+.dream-section h3,
+.dream-field > span,
+.dream-source-meta,
+.dream-help,
+.dream-empty {
+	color: #777a82;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dream-icon-button {
+	color: #6e727a;
+}
+
+.dream-icon-button:hover,
+.dream-icon-button:focus-visible {
+	border-color: transparent;
+	background: #eff1f4;
+	color: #1e2025;
+}
+
+.dream-section {
+	margin-bottom: 1.65rem;
+}
+
+.dream-source {
+	border-color: #e4e5e8;
+	border-radius: 0.45rem;
+	background: #fafafa;
+	color: #42444a;
+}
+
+.dream-action-link {
+	color: #0967c9;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-weight: 500;
+}
+
+.signal-list {
+	gap: 0;
+	border-top: 1px solid #e8e8ea;
+}
+
+.signal-item {
+	padding: 0.8rem 0;
+	border-bottom: 1px solid #e8e8ea;
+}
+
+.signal-heading {
+	color: #303238;
+	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+	font-size: 1rem;
+}
+
+.signal-description {
+	min-height: 3.25rem;
+	border-bottom: 0;
+	color: #4c4f56;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	font-size: 0.9rem;
+}
+
+.signal-remove {
+	color: #989ba3;
+}
+
+.resonance-item {
+	background: #f5f6f8;
+}
+
+.resonance-section-heading {
+	color: #989ba3;
+}
+
+.resonance-note {
+	color: #303238;
+}
+
+.resonance-review-item {
+	border-color: #e8e8ea;
+}
+
+.dream-field input,
+.dream-field textarea {
+	border-color: #dedfe3;
+	border-radius: 0.4rem;
+	background: #ffffff;
+	color: #2d3036;
+	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.025);
+}
+
+.dream-field input:focus,
+.dream-field textarea:focus,
+.signal-description:focus {
+	border-color: #78aeea;
+	outline: 3px solid rgba(88, 156, 231, 0.15);
+}
+
+.chat-panel,
+.pattern-panel {
+	background: #f7f7f8;
+	color: #303238;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.chat-header,
+.pattern-scope {
+	border-bottom-color: var(--panel-border);
+}
+
+.chat-header h2,
+.pattern-header h2 {
+	color: #2d3036;
+}
+
+.chat-catalogue-item,
+.pattern-item {
+	color: #3d4046;
+}
+
+.chat-catalogue-item {
+	border-bottom-color: #e7e7e9;
+}
+
+.chat-catalogue-item:hover,
+.chat-catalogue-item:focus-visible,
+.pattern-item:hover,
+.pattern-item.selected {
+	border-color: #c8dff8;
+	background: #e4f0ff;
+}
+
+.pattern-item,
+.chat-error,
+.chat-form {
+	border-color: #e0e1e5;
+	background: #ffffff;
+}
+
+.chat-message.user {
+	border-color: #cbe0fa;
+	background: #e7f1ff;
+	color: #26466c;
+}
+
+.chat-form textarea {
+	color: #383b41;
+}
+
+.send-button {
+	--button-hover-color: #ffffff;
+	--button-active-color: #ffffff;
+	--button-hover-background: #1264bb;
+	--button-active-background: #0b57ad;
+	background: #1672d2;
+	color: #ffffff;
+}
+
+:root:not([data-theme="dark"]) .chat-composer-footer select[data-chat-provider],
+:root:not([data-theme="dark"]) .chat-composer-footer select[data-chat-provider] option {
+	background: #ffffff;
+	color: #303238;
+}
+
+.application-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 2.5rem;
+	box-sizing: border-box;
+	padding: 0 1rem;
+	border-bottom: 1px solid #e5e7eb;
+	background: #fafafa;
+	color: #25282d;
+	font-family: var(--ui-font);
+	-webkit-app-region: drag;
+}
+
+.app-settings {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	-webkit-app-region: no-drag;
+}
+
+.app-setting-stepper {
+	display: flex;
+	align-items: center;
+	gap: 0.15rem;
+}
+
+.app-setting-value {
+	min-width: 1.6rem;
+	color: #4a4d53;
+	font-size: 0.75rem;
+	text-align: center;
+}
+
+.app-setting-field {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: #8a8d94;
+	font-size: 0.72rem;
+}
+
+.app-setting-select {
+	height: 1.7rem;
+	padding: 0 1.4rem 0 0.45rem;
+	border: 1px solid #dfe1e5;
+	border-radius: 0.4rem;
+	background: #ffffff;
+	color: #303238;
+	font-size: 0.75rem;
+}
+
+.app-setting-button {
+	display: grid;
+	place-items: center;
+	min-width: 1.7rem;
+	height: 1.7rem;
+	padding: 0 0.4rem;
+	border: 1px solid #dfe1e5;
+	border-radius: 0.4rem;
+	background: #ffffff;
+	color: #4a4d53;
+	font-size: 0.8rem;
+	cursor: pointer;
+}
+
+.application-work-title {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	padding: 0;
+	font-size: 0.82rem;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.application-work-title span {
+	margin: 0;
+	color: #8a8d94;
+	font-size: 0.78rem;
+	font-weight: 500;
+}
+
+.application-work-select {
+	height: 1.7rem;
+	max-width: 14rem;
+	padding: 0 1.4rem 0 0.45rem;
+	border: 1px solid #dfe1e5;
+	border-radius: 0.4rem;
+	background: #ffffff;
+	color: #303238;
+	font-size: 0.78rem;
+	font-weight: 500;
+	cursor: pointer;
+}
+
+:root[data-theme="dark"] .application-work-select {
+	border-color: var(--panel-border);
+	background: var(--dream-raised);
+	color: var(--app-text);
+}
+
+.shell {
+	height: calc(100vh - 2.5rem);
+}
+
+:root[data-theme="dark"] .application-toolbar {
+	border-bottom-color: var(--panel-border);
+	background: var(--app-background);
+	color: var(--app-text);
+}
+
+:root[data-theme="dark"] .app-setting-select,
+:root[data-theme="dark"] .app-setting-button {
+	border-color: var(--panel-border);
+	background: var(--dream-raised);
+	color: var(--app-text);
+}
+
+:root[data-theme="dark"] .app-setting-value {
+	color: var(--muted-text);
+}
+
+.dream-catalogue {
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	padding: 0;
+	background: #fbfcfe;
+	color: #17202c;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.catalogue-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 4.2rem;
+	margin: 0;
+	padding: 0 2.25rem;
+	border-bottom: 0;
+}
+
+.catalogue-header h3 {
+	margin: 0;
+	color: #111923;
+	font-size: 2rem;
+	font-weight: 700;
+	letter-spacing: 0;
+}
+
+.catalogue-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.catalogue-header-button {
+	display: grid;
+	width: 3.3rem;
+	height: 3.3rem;
+	place-items: center;
+	border: 1px solid #d4dae2;
+	border-radius: 0.7rem;
+	background: #ffffff;
+	color: #17202c;
+	font-size: 2.05rem;
+	font-weight: 300;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.catalogue-header-button:hover {
+	border-color: #9fc5fa;
+	background: #f1f7ff;
+	color: #126fd7;
+}
+
+.dream-search {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	min-height: 4.6rem;
+	margin: 0.75rem 2rem 1.65rem;
+	padding: 0 1.35rem;
+	border: 1px solid #d4dae2;
+	border-radius: 0.9rem;
+	background: #ffffff;
+	color: #8b95a2;
+	font-size: 1.6rem;
+}
+
+.dream-search-icon {
+	position: relative;
+	width: 1.5rem;
+	height: 1.5rem;
+	box-sizing: border-box;
+	border: 0.17rem solid #8792a0;
+	border-radius: 50%;
+}
+
+.dream-search-icon::after {
+	position: absolute;
+	width: 0.72rem;
+	height: 0.17rem;
+	right: -0.52rem;
+	bottom: -0.27rem;
+	border-radius: 1rem;
+	background: #8792a0;
+	content: "";
+	transform: rotate(45deg);
+}
+
+.dream-search input {
+	width: 100%;
+	height: 3.8rem;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: #17202c;
+	font: inherit;
+}
+
+.dream-search input::placeholder {
+	color: #87919e;
+	opacity: 1;
+}
+
+.dream-catalogue-list {
+	flex: 1;
+	overflow: auto;
+	padding: 0 1.5rem 1rem;
+}
+
+.catalogue-group {
+	border-top: 1px solid #e2e7ed;
+}
+
+.catalogue-group-toggle {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	min-height: 6.55rem;
+	gap: 1.35rem;
+	padding: 0 0.9rem;
+	border: 0;
+	background: transparent;
+	color: #667280;
+	font: inherit;
+	font-size: 1.2rem;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-align: left;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.catalogue-group-disclosure {
+	width: 0.74rem;
+	height: 0.74rem;
+	box-sizing: border-box;
+	border-right: 0.16rem solid #74808d;
+	border-bottom: 0.16rem solid #74808d;
+	transform: rotate(-45deg);
+	transition: transform 130ms ease-out;
+}
+
+.catalogue-group-toggle[aria-expanded="true"] .catalogue-group-disclosure {
+	transform: rotate(45deg);
+}
+
+.catalogue-group-content {
+	padding-bottom: 1.2rem;
+}
+
+.catalogue-item {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	min-height: 5.3rem;
+	gap: 0.9rem;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0.8rem 0.9rem;
+	border: 1px solid transparent;
+	border-radius: 0.95rem;
+	background: transparent;
+	color: #141c26;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	text-align: left;
+	cursor: pointer;
+}
+
+.catalogue-item:hover,
+.catalogue-item:focus-visible {
+	border-color: #d5e6ff;
+	background: #f3f8ff;
+	outline: 0;
+}
+
+.catalogue-item.selected {
+	border-color: #c4dcff;
+	background: #eaf3ff;
+}
+
+.catalogue-item-marker {
+	flex: 0 0 auto;
+	width: 0.8rem;
+	height: 0.8rem;
+	border-radius: 50%;
+	background: #9ba7b4;
+}
+
+.catalogue-item.selected .catalogue-item-marker {
+	background: #287de4;
+}
+
+.catalogue-item-copy {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
+.catalogue-item strong {
+	overflow: hidden;
+	color: inherit;
+	font-size: 1.45rem;
+	font-weight: 500;
+	line-height: 1.18;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.catalogue-location {
+	overflow: hidden;
+	color: #748294;
+	font-size: 1.12rem;
+	font-weight: 400;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.catalogue-item {
+	position: relative;
+}
+
+html {
+	font-size: 16px;
+}
+
+.application-toolbar {
+	height: 44px;
+	padding: 0 20px 0 24px;
+	border-color: var(--panel-border);
+	background: var(--app-background);
+	color: var(--app-text);
+	position: relative;
+	z-index: 30;
+}
+
+.application-work-title {
+	gap: 24px;
+	min-width: 0;
+	letter-spacing: 0;
+}
+
+.application-work-title .application-tagline {
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--muted-text);
+}
+
+.application-work-title .application-work-select {
+	margin-left: 36px;
+	border: 0;
+	background: transparent;
+	color: var(--app-text);
+	font-size: 13px;
+	max-width: 180px;
+	-webkit-app-region: no-drag;
+}
+
+.app-settings {
+	gap: 16px;
+}
+
+.app-settings .app-setting-button {
+	border: 0;
+	background: transparent;
+	color: var(--app-text);
+	font-size: 13px;
+	width: 30px;
+	height: 30px;
+}
+
+.app-setting-stepper {
+	gap: 12px;
+}
+
+.application-find {
+	display: flex;
+	align-items: center;
+	position: relative;
+	gap: 8px;
+	width: 142px;
+	height: 30px;
+	box-sizing: border-box;
+	padding: 0 8px;
+	border: 1px solid var(--panel-border);
+	border-radius: 4px;
+	color: var(--muted-text);
+}
+
+.application-find > svg {
+	width: 15px;
+	height: 15px;
+	flex-shrink: 0;
+}
+
+.application-find input {
+	min-width: 0;
+	width: 100%;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--app-text);
+	font-size: 11px;
+}
+
+.application-find input::placeholder {
+	color: var(--muted-text);
+}
+
+.application-find-actions {
+	display: none;
+	position: absolute;
+	top: 100%;
+	right: 0;
+	background: var(--dream-raised);
+	border: 1px solid var(--panel-border);
+	padding: 4px;
+}
+
+.application-find:focus-within .application-find-actions {
+	display: flex;
+}
+
+.application-find-actions button {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	background: transparent;
+	color: var(--app-text);
+	cursor: pointer;
+}
+
+.application-find-actions svg {
+	width: 16px;
+	height: 16px;
+}
+
+[data-find-count] {
+	font-size: 10px;
+	white-space: nowrap;
+}
+
+.shell {
+	--left-pane-width: 268px;
+	--dream-pane-width: clamp(400px, 46.9vw, 760px);
+	height: 100dvh;
+}
+
+.shell > .right-panel {
+	border-left: 0;
+	border-right: 1px solid var(--panel-border);
+	min-width: 0;
+	min-height: 0;
+}
+
+.shell > .center-panel {
+	min-width: 0;
+	min-height: 0;
+	scrollbar-width: thin;
+}
+
+.shell #readingPane {
+	padding: 0 22px 48px;
+	box-shadow: none;
+}
+
+.shell .reader-toolbar {
+	margin: 0 0 18px;
+	padding: 12px 0 8px;
+	border: 0;
+	border-bottom: 1px solid var(--panel-border);
+	border-radius: 0;
+	box-shadow: none;
+	display: block;
+}
+
+.reader-toolbar-line {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.reader-tools.app-settings {
+	justify-content: flex-end;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0 0 0 auto;
+	max-width: 100%;
+}
+
+.reader-tools .application-find {
+	flex: 1 1 140px;
+	max-width: 240px;
+}
+
+.reader-tools .app-setting-stepper {
+	display: flex;
+	gap: 2px;
+}
+
+.reader-tools .application-find-actions {
+	z-index: 2;
+}
+
+.reader-source-line {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 4px 16px;
+	margin-top: 8px;
+}
+
+.reader-source-attribution {
+	flex: 0 1 auto;
+	margin: 0 0 0 auto;
+	font: 11px/1.5 var(--ui-font);
+	color: var(--muted-text);
+	text-align: right;
+	overflow-wrap: anywhere;
+}
+
+.reader-passage-navigation {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	min-width: 0;
+}
+
+.reader-passage-navigation .work-header-greek {
+	margin: 0;
+}
+
+.reader-toolbar-line h1 {
+	font: 500 16px/1.3 var(--ui-font);
+	margin: 0;
+	padding-right: 18px;
+	border-right: 1px solid var(--panel-border);
+}
+
+.shell .reader-toolbar select,
+.shell .reader-toolbar input,
+.shell .reader-toolbar .reader-find-nav {
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+	color: var(--app-text);
+	font-size: 12px;
+}
+
+.shell .reader-toolbar select {
+	padding: 0;
+	max-width: 90px;
+}
+
+.shell .reader-toolbar .reader-work-select {
+	max-width: min(220px, 100%);
+	font: inherit;
+	font-family: var(--reading-font);
+	cursor: pointer;
+}
+
+.reader-toolbar-line h1 {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.reader-toolbar select option,
+.application-work-select option {
+	background: var(--dream-raised);
+	color: var(--app-text);
+}
+
+.shell .reader-locator-control {
+	gap: 3px;
+	flex-shrink: 0;
+}
+
+.shell .reader-locator-control input {
+	box-sizing: border-box;
+	width: 48px;
+	min-width: 48px;
+	flex: 0 0 48px;
+	text-align: center;
+	padding: 0 2px;
+}
+
+.shell .reader-locator-control input::-webkit-calendar-picker-indicator {
+	display: none;
+}
+
+.shell .reader-find-nav {
+	width: 24px;
+	height: 24px;
+}
+
+.reader-find-nav svg {
+	width: 16px;
+	height: 16px;
+}
+
+.reader-toolbar-line > .action-menu {
+	margin-left: auto;
+}
+
+.reader-toolbar .work-header-greek {
+	font-family: var(--reading-font);
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--muted-text);
+	margin: 4px 0 0;
+}
+
+.shell .text-body {
+	max-width: 720px;
+	font-size: var(--reading-font-size);
+	line-height: 1.55;
+}
+
+.shell .text-body .book-heading {
+	display: block;
+	letter-spacing: 0;
+}
+
+.shell .text-segment {
+	position: relative;
+	padding-left: 70px;
+	margin: 0 0 0.5em;
+	min-height: 24px;
+}
+
+.shell .text-segment.has-locator {
+	margin-top: 2em;
+}
+
+.shell .text-segment.has-locator:first-of-type {
+	margin-top: 0;
+}
+
+.shell .source-locator {
+	position: absolute;
+	top: 3px;
+	left: 0;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	width: 65px;
+	margin: 0;
+	font: 11px/24px var(--ui-font);
+	text-align: left;
+	color: var(--muted-text);
+}
+
+.shell .passage-dream-button {
+	margin-left: 2px;
+	color: var(--app-text);
+}
+
+.shell .passage-dream-button svg {
+	width: 13px;
+	height: 13px;
+}
+
+.shell .passage-dream-button:focus-visible {
+	color: var(--accent);
+}
+
+.action-menu {
+	position: relative;
+	flex-shrink: 0;
+	-webkit-app-region: no-drag;
+}
+
+.action-menu > summary {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	list-style: none;
+	color: var(--app-text);
+	cursor: pointer;
+}
+
+.action-menu > summary::-webkit-details-marker {
+	display: none;
+}
+
+.action-menu > summary svg {
+	width: 18px;
+	height: 18px;
+}
+
+.action-menu > summary:focus-visible,
+.action-menu button:focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: -1px;
+}
+
+.action-menu .action-menu-items {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 40;
+	min-width: 180px;
+	max-width: 260px;
+	padding: 6px;
+	border: 1px solid var(--panel-border);
+	border-radius: 4px;
+	background: var(--dream-raised);
+	box-shadow: 0 8px 24px #0004;
+}
+
+.action-menu .action-menu-items button {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	height: auto;
+	min-height: 32px;
+	padding: 6px 10px;
+	border: 0;
+	border-radius: 2px;
+	background: transparent;
+	color: var(--app-text);
+	font: 13px/1.4 var(--ui-font);
+	text-align: left;
+	cursor: pointer;
+}
+
+.action-menu-items button svg {
+	width: 15px;
+	height: 15px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.7;
+}
+
+.action-menu .action-menu-items button:hover {
+	background: var(--dream-selection);
+}
+
+.workspace-menu > .application-brand {
+	font-size: 18px;
+	font-weight: 600;
+	width: auto;
+}
+
+.workspace-menu .action-menu-items {
+	left: 0;
+	right: auto;
+}
+
+@media (max-width: 1150px) {
+	.shell {
+		--left-pane-width: 220px;
+		--dream-pane-width: 44vw;
+	}
+
+	.reader-toolbar-line {
+		gap: 6px;
+	}
+
+	.shell .text-segment {
+		padding-left: 52px;
+	}
+
+	.shell .source-locator {
+		width: 50px;
+	}
+}
+
+@media (max-width: 760px) {
+	.application-work-title .application-tagline {
+		display: none;
+	}
+
+	.application-work-title,
+	.app-settings {
+		gap: 8px;
+	}
+
+	.application-work-title .application-work-select {
+		margin-left: 0;
+		max-width: 100px;
+	}
+
+	.application-find {
+		width: 100px;
+	}
+
+	.shell {
+		--left-pane-width: 180px;
+	}
+
+	.shell,
+	.shell.dream-open {
+		grid-template-columns: 180px minmax(0, 1fr);
+	}
+
+	.shell.dream-open {
+		grid-template-areas: "left editor";
+	}
+
+	.shell.dream-open > .center-panel,
+	.shell .panel-resize-handle {
+		display: none;
+	}
+}
+
+@media (max-width: 520px) {
+	.application-toolbar {
+		padding-inline: 12px;
+	}
+
+	.application-work-title .application-work-select,
+	.app-setting-stepper {
+		display: none;
+	}
+
+	.shell,
+	.shell.dream-open {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "left";
+	}
+
+	.shell.dream-open {
+		grid-template-areas: "editor";
+	}
+
+	.shell.dream-open > .left-panel,
+	.shell > .center-panel {
+		display: none;
+	}
+}

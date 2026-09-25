@@ -5,8 +5,6 @@ import * as vscode from "vscode";
 const DefaultPort = 4319;
 // Header required before the Relay may access the user's Copilot session.
 const RelaySecretHeader = "x-copilot-relay-secret";
-// Legacy local setting retained for a smooth migration from the former Relay.
-const LegacySharedSecretSetting = "patternScanRelay.sharedSecret";
 
 // JSON payload received from Chora when it requests a model completion.
 interface PromptRequestBody
@@ -218,17 +216,10 @@ export function activate(context: vscode.ExtensionContext): void
 {
 	const output = vscode.window.createOutputChannel("Chora Copilot Relay");
 	const configuration = vscode.workspace.getConfiguration("choraCopilotRelay");
-	const configuredSecret = configuration.get<string>("sharedSecret", "").trim();
-	const legacySecret = vscode.workspace.getConfiguration().get<string>(LegacySharedSecretSetting, "").trim();
-	const sharedSecret = configuredSecret.length > 0 ? configuredSecret : legacySecret;
+	const sharedSecret = configuration.get<string>("sharedSecret", "").trim();
 	const port = configuration.get<number>("port", DefaultPort);
 	const relay = new ChoraCopilotRelay(output, sharedSecret, port);
 	const disposeRelay = new vscode.Disposable(relay.Stop.bind(relay));
-
-	if (configuredSecret.length === 0 && legacySecret.length > 0)
-	{
-		output.appendLine("Using the existing Relay secret temporarily. Set choraCopilotRelay.sharedSecret to complete migration.");
-	}
 
 	relay.Start();
 	context.subscriptions.push(output);

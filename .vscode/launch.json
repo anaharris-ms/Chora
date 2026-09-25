@@ -57,14 +57,16 @@
 				"Chora Copilot Relay: Launch Extension Host",
 				"Electron: Debug Main",
 				"Electron: Attach Renderer"
-			]
+			],
+			"stopAll": true
 		},
 		{
 			"name": "Electron: Debug App",
 			"configurations": [
 				"Electron: Debug Main",
 				"Electron: Attach Renderer"
-			]
+			],
+			"stopAll": true
 		}
 	]
 }

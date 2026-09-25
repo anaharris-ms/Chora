@@ -1,4 +1,5 @@
-import type { LibraryText } from "../../shared/library/LibraryTypes.js";
+import type { ChoraEvents } from "../core/events/ChoraEvents.js";
+import { ChoraEventBus, type Unsubscribe } from "../core/events/ChoraEventBus.js";
 import { EscapeHtml } from "../ui/Html.js";
 import { PatternController } from "./PatternController.js";
 import { PatternStore } from "./PatternStore.js";
@@ -6,27 +7,31 @@ import { PatternStore } from "./PatternStore.js";
 // Renders Hermeneia patterns and reader navigation in Chora's left panel.
 export class PatternPanel
 {
-	// Current reader document used to move to selected pattern evidence.
-	private document: LibraryText | null = null;
+	// Retained event subscriptions released on disposal.
+	private readonly subscriptions: Unsubscribe[] = [];
 
-	// Registers delegated interactions on the persistent Patterns root.
+	// Registers delegated interactions and re-renders on pattern state changes.
 	public constructor(
 		private readonly root: HTMLElement,
+		private readonly events: ChoraEventBus<ChoraEvents>,
 		private readonly store: PatternStore,
 		private readonly controller: PatternController
 	)
 	{
-		this.root.addEventListener("click", (event) => this.HandleClick(event));
+		this.root.addEventListener("click", this.HandleClick.bind(this));
+		this.subscriptions.push(this.events.Subscribe("patterns.changed", this.Update.bind(this)));
+		this.Update();
 	}
 
-	// Updates the reader document available to the selection workflow.
-	public SetDocument(document: LibraryText): void
+	// Releases retained subscriptions.
+	public Dispose(): void
 	{
-		this.document = document;
+		for (const unsubscribe of this.subscriptions) unsubscribe();
+		this.subscriptions.length = 0;
 	}
 
 	// Renders the current pattern scope with its read-only records.
-	public Update(): void
+	private Update(): void
 	{
 		const selectedId = this.store.GetSelectedPattern()?.id;
 		const focusedLocator = this.store.GetFocusedLocator();
@@ -52,20 +57,12 @@ export class PatternPanel
 
 		if (id !== undefined)
 		{
-			void this.SelectPatternAsync(id);
+			void this.controller.SelectPatternAsync(id);
 		}
 		if (filter)
 		{
 			const showAllPatterns = this.store.GetShowAllPatterns();
 			this.controller.SetShowAllPatterns(!showAllPatterns);
-			this.Update();
 		}
-	}
-
-	// Selects a record, moves the reader, then reflects the active row.
-	private async SelectPatternAsync(id: string): Promise<void>
-	{
-		await this.controller.SelectPatternAsync(id, this.document);
-		this.Update();
 	}
 }

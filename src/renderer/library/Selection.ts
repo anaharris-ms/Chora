@@ -1,6 +1,7 @@
 import type { TextSelection } from "../../shared/library/SelectionTypes.js";
 import type { LibraryText } from "../../shared/library/LibraryTypes.js";
 
+// Returns the nearest ancestor segment element of a selection endpoint node, or null when outside a segment.
 function GetSegmentElement(node: Node | null): HTMLElement | null
 {
 	const element = node instanceof Element ? node : node?.parentElement ?? null;
@@ -9,6 +10,7 @@ function GetSegmentElement(node: Node | null): HTMLElement | null
 	return segmentElement;
 }
 
+// Returns the segment's text element when it contains the given selection endpoint node.
 function GetSegmentTextElement(segment: HTMLElement, node: Node): HTMLElement | null
 {
 	const textElement = segment.querySelector<HTMLElement>(".segment-text");
@@ -19,6 +21,7 @@ function GetSegmentTextElement(segment: HTMLElement, node: Node): HTMLElement | 
 	return result;
 }
 
+// Returns the character offset within a segment's text element up to a selection boundary.
 function GetTextOffset(element: HTMLElement, container: Node, offset: number): number
 {
 	const range = document.createRange();
@@ -29,6 +32,7 @@ function GetTextOffset(element: HTMLElement, container: Node, offset: number): n
 	return textOffset;
 }
 
+// Captures the reader's current browser selection as a canonical TextSelection, or null when there is none.
 export function CaptureSelection(work: LibraryText): TextSelection | null
 {
 	const selection = window.getSelection();
@@ -67,6 +71,7 @@ export function CaptureSelection(work: LibraryText): TextSelection | null
 	return result;
 }
 
+// Clears the browser's native selection ranges.
 export function ClearBrowserSelection(): void
 {
 	const selection = window.getSelection();

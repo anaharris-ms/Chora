@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -43,6 +43,38 @@ async function CreateServiceAsync(provider: CapturingProvider, promptLoader: Cha
 
 describe("chat sessions", function ChatSessionTests()
 {
+	it("deletes only the selected chat and refuses deletion during a response", async function DeletesConversationAsync(): Promise<void>
+	{
+		const provider = new CapturingProvider();
+		const promptPath = path.join(process.cwd(), "Prompts");
+		const prompts = new PromptLoader(promptPath);
+		const loader = new ChatPromptLoader(prompts);
+		const service = await CreateServiceAsync(provider, loader);
+		const context: ChatContext = { mode: "FREE" };
+		const selection = { providerId: "mock", modelId: "mock" } as const;
+		const first = await service.Start(context, selection, "First chat");
+		const second = await service.Start(context, selection, "Second chat");
+		let release: ((response: ModelResponse) => void) | undefined;
+		const pending = new Promise<ModelResponse>(function HoldReply(resolve): void
+		{
+			release = resolve;
+		});
+		vi.spyOn(provider, "CompleteAsync").mockReturnValueOnce(pending);
+		const continuation = service.Continue(first.conversationId, context, "Continue");
+		const deletion = service.DeleteConversationAsync(first.conversationId);
+		await expect(deletion).rejects.toThrow("conversation is busy");
+		release?.({ provider: "mock", model: "mock", rawText: "Completed" });
+		await continuation;
+		await service.DeleteConversationAsync(first.conversationId);
+		const remaining = await service.ListConversationsAsync();
+		expect(remaining).toHaveLength(1);
+		expect(remaining[0]?.id).toBe(second.conversationId);
+		const deleted = service.GetConversationAsync(first.conversationId);
+		await expect(deleted).rejects.toMatchObject({ code: "ENOENT" });
+		const invalid = service.DeleteConversationAsync("../outside");
+		await expect(invalid).rejects.toThrow("identifier is invalid");
+	});
+
 	afterEach(async function RemoveConversationDirectoriesAsync()
 	{
 		for (const directory of directories.splice(0))

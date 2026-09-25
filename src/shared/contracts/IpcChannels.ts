@@ -11,6 +11,7 @@ export const IPC_CHANNELS = {
 	continueChat: "chora:continue-chat",
 	listChatConversations: "chora:list-chat-conversations",
 	loadChatConversation: "chora:load-chat-conversation",
+	deleteChatConversation: "chora:delete-chat-conversation",
 	getChatTools: "chora:get-chat-tools",
 	chatDelta: "chora:chat-delta",
 	getConfiguredProvider: "chora:get-configured-provider",
@@ -19,5 +20,6 @@ export const IPC_CHANNELS = {
 	listPatterns: "chora:list-patterns",
 	saveDream: "chora:save-dream",
 	deleteDream: "chora:delete-dream",
-	listDreams: "chora:list-dreams"
+	listDreams: "chora:list-dreams",
+	allocateDreamId: "chora:allocate-dream-id"
 } as const;

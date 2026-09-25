@@ -1,4 +1,4 @@
-import type { ChatConversationSnapshot, ChatConversationSummary, ChatMessage } from "../../shared/chat/ChatTypes.js";
+import type { ChatContext, ChatConversationSnapshot, ChatConversationSummary, ChatMessage, DreamChatContext } from "../../shared/chat/ChatTypes.js";
 import type { ModelMessage, ModelSelection, ProviderId } from "../../shared/chat/ModelTypes.js";
 
 // Reader-owned conversation that preserves a serializable message history.
@@ -20,6 +20,17 @@ export class ChatConversation
 	private title: string;
 // Time at which this conversation last completed an exchange.
 	private updatedAt: string;
+	// Explicit reader-selected signal context retained with the conversation.
+	private signalContext: DreamChatContext | null = null;
+
+	// Records only explicit signal context; ordinary chats continue following reading focus.
+	public SetSignalContext(context: ChatContext): void
+	{
+		if (context.mode === "DREAM" && context.dream.focusedSignal !== undefined)
+		{
+			this.signalContext = structuredClone(context);
+		}
+	}
 
 	// Creates a new conversation with no persisted exchanges.
 	public constructor(id: string, selection: ModelSelection, createdAt: string = new Date().toISOString())
@@ -43,6 +54,10 @@ export class ChatConversation
 		let conversation = new ChatConversation(snapshot.id, selection, snapshot.createdAt);
 		conversation.title = snapshot.title;
 		conversation.updatedAt = snapshot.updatedAt;
+		if (snapshot.signalContext !== undefined)
+		{
+			conversation.SetSignalContext(snapshot.signalContext);
+		}
 		conversation.messages.push(...structuredClone(snapshot.messages));
 
 		return conversation;
@@ -123,6 +138,11 @@ export class ChatConversation
 			createdAt: this.createdAt,
 			updatedAt: this.updatedAt
 		};
+
+		if (this.signalContext !== null)
+		{
+			snapshot.signalContext = structuredClone(this.signalContext);
+		}
 
 		return snapshot;
 	}

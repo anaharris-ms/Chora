@@ -21,6 +21,8 @@ export interface ChoraApi
 	ContinueChat(conversationId: string, context: ChatContext, question: string, requestId: string): Promise<ChatResult>;
 	ListChatConversations(): Promise<ChatConversationSummary[]>;
 	LoadChatConversation(conversationId: string): Promise<ChatConversationSnapshot>;
+	// Permanently removes a saved conversation.
+	DeleteChatConversation(conversationId: string): Promise<void>;
 	GetChatTools(): Promise<ChatToolDefinition[]>;
 	SubscribeChatDelta(callback: (delta: ChatStreamDelta) => void): ApiSubscription;
 	GetConfiguredProvider(): Promise<ProviderId>;
@@ -30,4 +32,5 @@ export interface ChoraApi
 	SaveDream(dream: Dream): Promise<Dream>;
 	DeleteDream(dreamId: string): Promise<void>;
 	ListDreams(): Promise<Dream[]>;
+	AllocateDreamId(): Promise<string>;
 }

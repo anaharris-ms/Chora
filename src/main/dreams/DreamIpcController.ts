@@ -6,13 +6,15 @@ import { DreamService } from "./DreamService.js";
 export class DreamIpcController
 {
 	// IPC channels registered by this controller.
-	private readonly channels = [IPC_CHANNELS.saveDream, IPC_CHANNELS.deleteDream, IPC_CHANNELS.listDreams] as const;
+	private readonly channels = [IPC_CHANNELS.saveDream, IPC_CHANNELS.deleteDream, IPC_CHANNELS.listDreams, IPC_CHANNELS.allocateDreamId] as const;
 	// Bound Electron handler that persists one Dream record.
 	private readonly saveHandler: (_event: IpcMainInvokeEvent, dream: Dream) => Promise<Dream>;
 	// Bound Electron handler that deletes one Dream record.
 	private readonly deleteHandler: (_event: IpcMainInvokeEvent, dreamId: string) => Promise<void>;
 	// Bound Electron handler that lists all visible Dreams.
 	private readonly listHandler: () => Promise<Dream[]>;
+	// Bound Electron handler that allocates a new canonical Dream or signal identifier.
+	private readonly allocateIdHandler: () => Promise<string>;
 
 	// Creates the IPC boundary for the Dream use-case service.
 	public constructor(private readonly service: DreamService)
@@ -20,6 +22,7 @@ export class DreamIpcController
 		this.saveHandler = this.HandleSaveAsync.bind(this);
 		this.deleteHandler = this.HandleDeleteAsync.bind(this);
 		this.listHandler = this.HandleListAsync.bind(this);
+		this.allocateIdHandler = this.HandleAllocateIdAsync.bind(this);
 	}
 
 	// Registers Dream use cases with Electron's main-process IPC registry.
@@ -28,6 +31,7 @@ export class DreamIpcController
 		ipcMain.handle(IPC_CHANNELS.saveDream, this.saveHandler);
 		ipcMain.handle(IPC_CHANNELS.deleteDream, this.deleteHandler);
 		ipcMain.handle(IPC_CHANNELS.listDreams, this.listHandler);
+		ipcMain.handle(IPC_CHANNELS.allocateDreamId, this.allocateIdHandler);
 	}
 
 	// Removes Dream use cases from Electron's main-process IPC registry.
@@ -58,5 +62,13 @@ export class DreamIpcController
 		const dreams = this.service.ListAsync();
 
 		return dreams;
+	}
+
+	// Allocates a new canonical identifier for a renderer-initiated Dream or Dream signal.
+	private HandleAllocateIdAsync(): Promise<string>
+	{
+		const id = this.service.AllocateIdAsync();
+
+		return id;
 	}
 }

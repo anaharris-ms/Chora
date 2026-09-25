@@ -5,7 +5,7 @@ const config: ForgeConfig = {
 		asar: true,
 		name: "Chora",
 		executableName: "chora",
-		extraResource: ["Prompts"]
+		extraResource: ["Prompts", "corpus/generated"]
 	},
 	makers: [
 		{

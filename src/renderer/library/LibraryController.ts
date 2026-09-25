@@ -1,5 +1,5 @@
 import type { TextSelection } from "../../shared/library/SelectionTypes.js";
-import type { LibraryText } from "../../shared/library/LibraryTypes.js";
+import type { LibraryText, LibraryTextSummary } from "../../shared/library/LibraryTypes.js";
 import { ReconstructSelection } from "../../shared/library/SelectionService.js";
 import { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
 import { ChoraEventBus } from "../core/events/ChoraEventBus.js";
@@ -7,21 +7,31 @@ import type { ChoraEvents } from "../core/events/ChoraEvents.js";
 import { LibraryGateway } from "./LibraryGateway.js";
 import { LibraryStore } from "./LibraryStore.js";
 
+// Coordinates Library workflows between the catalogue, the active text, and the main process.
 export class LibraryController
 {
-	public constructor(private readonly events: ChoraEventBus<ChoraEvents>, private readonly errors: ErrorManager, private readonly store: LibraryStore, private readonly gateway: LibraryGateway)
+	// Local storage key for the reader's last-opened work.
+	private static readonly LastWorkKey = "chora:last-work";
+
+	// Creates the controller and subscribes to the application events it coordinates.
+	public constructor(
+		private readonly events: ChoraEventBus<ChoraEvents>,
+		private readonly errors: ErrorManager,
+		private readonly store: LibraryStore,
+		private readonly gateway: LibraryGateway)
 	{
-		this.events.Subscribe("library.text-open-requested", (event) => this.OpenAsync(event.textId));
+		this.events.Subscribe("library.text-open-requested", this.HandleTextOpenRequested.bind(this));
 	}
 
+	// Loads the Library catalogue and opens the reader's preferred work.
 	public async StartAsync(): Promise<void>
 	{
 		try
 		{
 			const texts = await this.gateway.ListAsync();
 			this.store.SetLibrary(texts);
-			const first = texts[0];
-			if (first !== undefined) await this.OpenAsync(first.id);
+			const preferredId = this.ResolvePreferredWorkId(texts);
+			if (preferredId !== null) await this.OpenAsync(preferredId);
 		}
 		catch (error)
 		{
@@ -29,6 +39,7 @@ export class LibraryController
 		}
 	}
 
+	// Opens a work by id and publishes it as the active text.
 	public async OpenAsync(textId: string): Promise<void>
 	{
 		try
@@ -36,6 +47,7 @@ export class LibraryController
 			const text = await this.gateway.LoadAsync(textId);
 			const notice = await this.gateway.GetSourceNoticeAsync(textId);
 			this.store.Open(text, notice);
+			this.SaveLastWorkId(textId);
 			this.SetFocusSegment(text.segments[0]?.key ?? "");
 			await this.events.PublishAsync("library.text-opened", { text, sourceNotice: notice });
 		}
@@ -45,6 +57,7 @@ export class LibraryController
 		}
 	}
 
+	// Opens a text supplied directly by the main process, bypassing the Library catalogue lookup.
 	public OpenExternal(text: LibraryText): void
 	{
 		this.store.Open(text, null);
@@ -52,6 +65,7 @@ export class LibraryController
 		void this.events.PublishAsync("library.text-opened", { text, sourceNotice: null });
 	}
 
+	// Reconciles a raw browser selection into canonical form and publishes it when changed.
 	public SetSelection(selection: TextSelection | null): void
 	{
 		const snapshot = this.store.GetSnapshot();
@@ -75,6 +89,7 @@ export class LibraryController
 		}
 	}
 
+	// Sets the focus segment used as a selection fallback for Dream creation.
 	public SetFocusSegment(segmentKey: string): void
 	{
 		const text = this.store.GetSnapshot().text;
@@ -87,16 +102,68 @@ export class LibraryController
 		}
 	}
 
+	// Shows the selection context menu and routes the reader's choice to its workflow.
 	public async HandleSelectionActionAsync(selection: TextSelection): Promise<void>
 	{
 		const action = await this.gateway.ShowSelectionContextMenuAsync();
 		if (action === "create-dream") await this.events.PublishAsync("dream.create-requested", { selection });
 		if (action === "add-to-dream") await this.events.PublishAsync("dream.source-extend-requested", { selection });
 		if (action === "add-dream-signal") await this.events.PublishAsync("dream.signal-add-requested", { selection });
+		if (action === "attach-resonance-target") await this.events.PublishAsync("dream.resonance-target-attach-requested", { selection });
 		if (action === "copy") await this.gateway.CopyAsync(selection.selectedText);
 		if (action === "lookup") await this.gateway.LookUpAsync(selection.selectedText);
 	}
 
+	// Routes a text-open-requested application event to the open workflow.
+	private async HandleTextOpenRequested(event: ChoraEvents["library.text-open-requested"]): Promise<void>
+	{
+		await this.OpenAsync(event.textId);
+	}
+
+	// Prefers the last-opened work, then Republic, then the first available work.
+	private ResolvePreferredWorkId(texts: readonly LibraryTextSummary[]): string | null
+	{
+		const savedId = this.LoadLastWorkId();
+		let preferred: string | null = null;
+
+		if (savedId !== null && texts.some((text) => text.id === savedId)) preferred = savedId;
+		else if (texts.some((text) => text.id === "republic")) preferred = "republic";
+		else preferred = texts[0]?.id ?? null;
+
+		return preferred;
+	}
+
+	// Reads the last-opened work id from persistent storage, tolerating unavailable storage.
+	private LoadLastWorkId(): string | null
+	{
+		let workId: string | null = null;
+
+		try
+		{
+			workId = window.localStorage.getItem(LibraryController.LastWorkKey);
+		}
+		catch
+		{
+			workId = null;
+		}
+
+		return workId;
+	}
+
+	// Remembers the opened work id for the next application run, tolerating unavailable storage.
+	private SaveLastWorkId(textId: string): void
+	{
+		try
+		{
+			window.localStorage.setItem(LibraryController.LastWorkKey, textId);
+		}
+		catch
+		{
+			// The last-opened work is remembered only when storage is available.
+		}
+	}
+
+	// Returns whether two selections refer to the same span.
 	private AreSelectionsEqual(first: TextSelection | null, second: TextSelection | null): boolean
 	{
 		let isEqual = first === null && second === null;

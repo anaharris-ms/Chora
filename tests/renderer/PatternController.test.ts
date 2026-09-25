@@ -4,6 +4,7 @@ import type { ChoraEvents } from "../../src/renderer/core/events/ChoraEvents.js"
 import { PatternController } from "../../src/renderer/patterns/PatternController.js";
 import { PatternGateway } from "../../src/renderer/patterns/PatternGateway.js";
 import { PatternStore } from "../../src/renderer/patterns/PatternStore.js";
+import { LibraryStore } from "../../src/renderer/library/LibraryStore.js";
 import type { LibraryText } from "../../src/shared/library/LibraryTypes.js";
 
 // Representative document containing a locator that overlaps the fixture data.
@@ -52,12 +53,14 @@ describe("PatternController", function PatternControllerTests()
 		const events = new ChoraEventBus<ChoraEvents>();
 		const publish = vi.spyOn(events, "PublishAsync");
 		const store = new PatternStore();
-		const controller = new PatternController(events, store, new PatternGateway());
+		const library = new LibraryStore();
+		library.Open(foreignDocument, null);
+		const controller = new PatternController(events, store, new PatternGateway(), library);
 		await controller.LoadAsync("republic");
 		controller.SetDocumentId("republic");
 		controller.SetShowAllPatterns(true);
 
-		await controller.SelectPatternAsync("republic-book-01-section-08:p001:353b", foreignDocument);
+		await controller.SelectPatternAsync("republic-book-01-section-08:p001:353b");
 
 		expect(publish).not.toHaveBeenCalledWith("library.jump-requested", expect.anything());
 	});
@@ -66,7 +69,7 @@ describe("PatternController", function PatternControllerTests()
 	{
 		ConfigurePatternsApi();
 		const store = new PatternStore();
-		const controller = new PatternController(new ChoraEventBus<ChoraEvents>(), store, new PatternGateway());
+		const controller = new PatternController(new ChoraEventBus<ChoraEvents>(), store, new PatternGateway(), new LibraryStore());
 		await controller.LoadAsync("republic");
 		controller.SetDocumentId("republic");
 		controller.SetFocusedLocator("353b");
@@ -82,7 +85,7 @@ describe("PatternController", function PatternControllerTests()
 	{
 		ConfigurePatternsApi();
 		const store = new PatternStore();
-		const controller = new PatternController(new ChoraEventBus<ChoraEvents>(), store, new PatternGateway());
+		const controller = new PatternController(new ChoraEventBus<ChoraEvents>(), store, new PatternGateway(), new LibraryStore());
 		await controller.LoadAsync("republic");
 		controller.SetDocumentId("republic");
 		controller.SetShowAllPatterns(true);

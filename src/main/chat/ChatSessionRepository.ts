@@ -38,6 +38,13 @@ export class ChatSessionRepository
 	}
 
 	// Releases all runtime-only provider sessions during application shutdown.
+	// Releases the provider cached for a deleted conversation.
+	public Remove(conversationId: string): void
+	{
+		this.sessions.delete(conversationId);
+	}
+
+	// Releases all runtime-only provider sessions during application shutdown.
 	public Clear(): void
 	{
 		this.sessions.clear();

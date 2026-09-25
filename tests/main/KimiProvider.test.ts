@@ -92,6 +92,25 @@ describe("Kimi provider", function KimiProviderTests()
 		});
 	});
 
+	it("reports a token-limit cutoff instead of returning a truncated answer", async function RejectsTruncationAsync(): Promise<void>
+	{
+		vi.stubEnv("MOONSHOT_API_KEY", "test-key");
+		vi.stubEnv("MODEL_NAME", "kimi-k2.6");
+		vi.stubGlobal("fetch", async function ReturnTruncatedReplyAsync(): Promise<Response>
+		{
+			const payload = { choices: [{ delta: { content: "Unfinished reply" }, finish_reason: "length" }] };
+			const serialized = JSON.stringify(payload);
+			const response = new Response(`data: ${serialized}\n\ndata: [DONE]\n`, { status: 200 });
+			return response;
+		});
+		const provider = new KimiModelProvider();
+		const request = { systemPrompt: "Reply directly.", userPrompt: "Discuss this.", history: [], context: null };
+		const completion = provider.CompleteAsync(request);
+		await expect(completion).rejects.toMatchObject({ code: "malformed-response", message: expect.stringContaining("output token limit") });
+		const retry = provider.CompleteAsync(request);
+		await expect(retry).rejects.toMatchObject({ code: "malformed-response" });
+	});
+
 	it("preserves conversation history in the request", async function PreservesHistory()
 	{
 		let requestBody = "";

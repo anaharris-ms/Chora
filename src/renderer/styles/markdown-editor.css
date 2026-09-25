@@ -1,0 +1,149 @@
+.markdown-editor {
+	min-width: 0;
+	color: var(--app-text);
+	font-family: var(--ui-font);
+	font-size: 0.9rem;
+	line-height: 1.5;
+}
+
+.markdown-editor[hidden],
+.markdown-link-form[hidden] {
+	display: none;
+}
+
+.signal-markdown-editor {
+	margin: 0.5rem 0 0.75rem;
+}
+
+.markdown-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2px;
+	padding: 3px;
+	border-bottom: 1px solid var(--panel-border);
+}
+
+.markdown-toolbar button,
+.markdown-link-form button {
+	display: grid;
+	place-items: center;
+	flex: 0 0 28px;
+	width: 28px;
+	height: 28px;
+	padding: 4px;
+	border: 0;
+	border-radius: 3px;
+	background: transparent;
+	color: var(--app-text);
+	cursor: pointer;
+}
+
+.markdown-toolbar button:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.markdown-toolbar button:hover:not(:disabled),
+.markdown-toolbar button[aria-pressed="true"],
+.markdown-link-form button:hover {
+	background: var(--dream-raised);
+	color: var(--accent);
+}
+
+.markdown-editor button:focus-visible,
+.markdown-link-form input:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.markdown-editor svg {
+	width: 16px;
+	height: 16px;
+}
+
+.markdown-content {
+	box-sizing: border-box;
+	min-height: 5rem;
+	overflow: auto;
+	resize: vertical;
+	padding: 0.4rem 0.75rem 1rem;
+}
+
+.markdown-content::-webkit-resizer {
+	background: linear-gradient(135deg,
+		transparent 40%, var(--muted-text) 40% 48%,
+		transparent 48% 60%, var(--muted-text) 60% 68%,
+		transparent 68% 80%, var(--muted-text) 80% 88%,
+		transparent 88%) var(--dream-raised);
+	border: 2px solid var(--dream-raised);
+}
+
+.markdown-content .ProseMirror {
+	min-height: 3rem;
+	outline: none;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font: inherit;
+	color: inherit;
+}
+
+.markdown-content:focus-within {
+	box-shadow: inset 2px 0 var(--accent);
+}
+
+.markdown-content p {
+	margin: 0 0 0.75em;
+}
+
+.markdown-content p:last-child {
+	margin-bottom: 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+	padding-left: 1.5rem;
+	margin: 0.5rem 0;
+}
+
+.markdown-content blockquote {
+	margin: 0.5rem 0;
+	padding-left: 0.75rem;
+	border-left: 2px solid var(--muted-text);
+}
+
+.markdown-content a {
+	color: var(--accent);
+	text-decoration: underline;
+}
+
+.markdown-content img {
+	display: none;
+}
+
+.markdown-link-form {
+	display: flex;
+	gap: 4px;
+	padding: 4px;
+}
+
+.markdown-link-form input {
+	min-width: 0;
+	flex: 1;
+	border: 1px solid var(--panel-border);
+	background: var(--dream-raised);
+	color: var(--app-text);
+	font: inherit;
+}
+
+.dream-exegesis-markdown {
+	border: 1px solid var(--panel-border);
+	border-radius: 4px;
+}
+
+.dream-exegesis-markdown .markdown-content {
+	min-height: 18rem;
+}
+
+:root[data-theme="dark"] .signal-markdown-editor {
+	color: #ffffff;
+}

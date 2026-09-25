@@ -31,6 +31,8 @@ export class ChatService
 	private readonly tools: ChatToolRegistry;
 	private readonly createProvider: ChatProviderFactory;
 	private readonly promptLoader: ChatPromptLoader;
+	// Serializes continuation and deletion for each durable conversation.
+	private readonly busyConversations = new Set<string>();
 
 	public constructor(
 		tools: ChatToolRegistry = new ChatToolRegistry(),
@@ -63,12 +65,46 @@ export class ChatService
 
 	public async Continue(conversationId: string, context: ChatContext, question: string, onDelta?: ModelDeltaHandler): Promise<ChatResult>
 	{
-		const snapshot = await this.conversations.GetAsync(conversationId);
-		const conversation = ChatConversation.Restore(snapshot);
-		const session = this.GetOrCreateSession(conversation);
-		const result = await this.SendAsync(session, conversation, context, question, onDelta);
+		this.AcquireConversation(conversationId);
+		let result: ChatResult;
+		try
+		{
+			const snapshot = await this.conversations.GetAsync(conversationId);
+			const conversation = ChatConversation.Restore(snapshot);
+			const session = this.GetOrCreateSession(conversation);
+			result = await this.SendAsync(session, conversation, context, question, onDelta);
+		}
+		finally
+		{
+			this.busyConversations.delete(conversationId);
+		}
 
 		return result;
+	}
+
+	// Deletes a durable conversation only when no exchange can recreate its file.
+	public async DeleteConversationAsync(conversationId: string): Promise<void>
+	{
+		this.AcquireConversation(conversationId);
+		try
+		{
+			await this.conversations.DeleteAsync(conversationId);
+			this.sessions.Remove(conversationId);
+		}
+		finally
+		{
+			this.busyConversations.delete(conversationId);
+		}
+	}
+
+	// Rejects overlapping operations before any filesystem or model work begins.
+	private AcquireConversation(conversationId: string): void
+	{
+		if (this.busyConversations.has(conversationId))
+		{
+			throw new Error("This conversation is busy. Wait for the current operation to finish.");
+		}
+		this.busyConversations.add(conversationId);
 	}
 
 	// Lists saved conversations for the reader's conversation history view.
@@ -113,6 +149,7 @@ export class ChatService
 
 		const message: ChatMessage = { role: "assistant", content: result.text, kind: result.kind };
 		conversation.AddExchange(trimmedQuestion, message);
+		conversation.SetSignalContext(context);
 		const snapshot = conversation.CreateSnapshot();
 		await this.conversations.SaveAsync(snapshot);
 

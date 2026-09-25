@@ -62,7 +62,7 @@ export class ChatConversationRepository
 		await rename(temporaryPath, filePath);
 	}
 
-	// Deletes one saved conversation when a future list UI requests it.
+	// Deletes one saved conversation after validating its repository-owned identifier.
 	public async DeleteAsync(conversationId: string): Promise<void>
 	{
 		this.ValidateIdentifier(conversationId);

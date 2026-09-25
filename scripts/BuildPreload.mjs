@@ -1,6 +1,9 @@
 import { build } from "vite";
 
+const isDebugBuild = process.env.CHORA_DEBUG_BUILD === "true";
+
 await build({
+	mode: isDebugBuild ? "development" : "production",
 	build: {
 		emptyOutDir: false,
 		lib: {
@@ -15,6 +18,7 @@ await build({
 				entryFileNames: "preload.js"
 			}
 		},
-		sourcemap: true
+		sourcemap: true,
+		minify: isDebugBuild ? false : "esbuild"
 	}
 });

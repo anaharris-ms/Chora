@@ -8,10 +8,10 @@
 	"edition": {
 		"editor": "John Burnet",
 		"title": "Platonis Opera",
-		"volume": "4",
+		"volume": null,
 		"publisher": "Oxford University Press",
 		"publicationPlace": "Oxford",
-		"publicationDate": "1905"
+		"publicationDate": null
 	},
 	"provenance": {
 		"sourceKind": "bundled",

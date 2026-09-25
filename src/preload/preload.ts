@@ -83,6 +83,13 @@ async function ListChatConversations(): Promise<ChatConversationSummary[]>
 	return result as ChatConversationSummary[];
 }
 
+// Deletes a saved conversation through the isolated bridge.
+async function DeleteChatConversation(conversationId: string): Promise<void>
+{
+	await ipcRenderer.invoke(IPC_CHANNELS.deleteChatConversation, conversationId);
+}
+
+// Loads a saved conversation through the isolated bridge.
 async function LoadChatConversation(conversationId: string): Promise<ChatConversationSnapshot>
 {
 	const result = await ipcRenderer.invoke(IPC_CHANNELS.loadChatConversation, conversationId);
@@ -153,6 +160,13 @@ async function DeleteDream(dreamId: string): Promise<void>
 	await ipcRenderer.invoke(IPC_CHANNELS.deleteDream, dreamId);
 }
 
+async function AllocateDreamId(): Promise<string>
+{
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.allocateDreamId);
+
+	return result as string;
+}
+
 const api: ChoraApi = {
 	ListLibraryTexts,
 	LoadLibraryText,
@@ -166,6 +180,7 @@ const api: ChoraApi = {
 	ContinueChat,
 	ListChatConversations,
 	LoadChatConversation,
+	DeleteChatConversation,
 	GetChatTools,
 	SubscribeChatDelta,
 	GetConfiguredProvider,
@@ -174,7 +189,8 @@ const api: ChoraApi = {
 	ListPatterns,
 	SaveDream,
 	DeleteDream,
-	ListDreams
+	ListDreams,
+	AllocateDreamId
 };
 
 contextBridge.exposeInMainWorld("chora", api);

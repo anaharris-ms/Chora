@@ -5,34 +5,29 @@ import type { Dream as DreamRecord } from "../../shared/dreams/DreamTypes.js";
 import { Errors } from "../diagnostics/MainErrorManager.js";
 import { ParseDreamMarkdown, SerializeDreamMarkdown } from "./DreamMarkdownCodec.js";
 
-// Origin of a persisted Dream record.
-export type DreamOrigin = "primary" | "legacy";
-
-// A parsed Dream record together with its persistence origin and path.
+// A parsed Dream record together with its persistence path.
 export interface DreamPersistenceRecord
 {
 	// Serialized Dream data owned by the Dream aggregate.
 	dream: DreamRecord;
 	// Absolute path to the persisted Markdown record.
 	filePath: string;
-	// Library from which the record was loaded.
-	origin: DreamOrigin;
 }
 
 // Loads and saves serialized Dream records without applying domain decisions.
 export class DreamRepository
 {
-	// Repository-owned index of records loaded from primary and legacy libraries.
+	// Repository-owned index of records loaded from the Dream library.
 	private readonly index = new Map<string, DreamPersistenceRecord>();
 	// Tracks whether the index represents a completed repository scan.
 	private isIndexLoaded = false;
 
-	// Creates persistence access scoped to one primary and optional legacy Dream libraries.
-	public constructor(private readonly libraryPath: string, private readonly legacyLibraryPaths: readonly string[] = [])
+	// Creates persistence access scoped to one Dream library root.
+	public constructor(private readonly libraryPath: string)
 	{
 	}
 
-	// Loads persisted records, retaining primary precedence for duplicate identities.
+	// Loads persisted records for the Dream library.
 	public async LoadAsync(): Promise<DreamPersistenceRecord[]>
 	{
 		if (!this.isIndexLoaded)
@@ -45,25 +40,15 @@ export class DreamRepository
 		return loaded;
 	}
 
-	// Rebuilds the repository-owned index from primary and legacy persistence roots.
+	// Rebuilds the repository-owned index from the Dream persistence root.
 	public async RefreshIndexAsync(): Promise<void>
 	{
 		const records = new Map<string, DreamPersistenceRecord>();
-		const roots: Array<{ path: string; origin: DreamOrigin }> = [{ path: this.libraryPath, origin: "primary" }];
+		const paths = await this.ListMarkdownPathsAsync(this.libraryPath);
 
-		for (const legacyPath of this.legacyLibraryPaths)
+		for (const filePath of paths)
 		{
-			roots.push({ path: legacyPath, origin: "legacy" });
-		}
-
-		for (const root of roots)
-		{
-			const paths = await this.ListMarkdownPathsAsync(root.path);
-
-			for (const filePath of paths)
-			{
-				await this.LoadPathAsync(filePath, root.origin, records);
-			}
+			await this.LoadPathAsync(filePath, records);
 		}
 
 		this.index.clear();
@@ -123,7 +108,7 @@ export class DreamRepository
 	}
 
 	// Reads and parses one Markdown file into a persistence record.
-	private async LoadPathAsync(filePath: string, origin: DreamOrigin, records: Map<string, DreamPersistenceRecord>): Promise<void>
+	private async LoadPathAsync(filePath: string, records: Map<string, DreamPersistenceRecord>): Promise<void>
 	{
 		try
 		{
@@ -134,7 +119,7 @@ export class DreamRepository
 
 			if (isNew && dream !== null)
 			{
-				const record: DreamPersistenceRecord = { dream, filePath, origin };
+				const record: DreamPersistenceRecord = { dream, filePath };
 				records.set(dream.id, record);
 			}
 		}

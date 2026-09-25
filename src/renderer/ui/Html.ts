@@ -1,3 +1,4 @@
+// Escapes text for safe insertion into HTML markup.
 export function EscapeHtml(value: string): string
 {
 	const escaped = value
