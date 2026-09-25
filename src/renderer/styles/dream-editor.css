@@ -446,6 +446,21 @@
 	line-height: 1.5;
 }
 
+.dream-editor .resonance-bullet {
+	display: flex;
+	align-items: center;
+	align-self: flex-start;
+	flex: 0 0 12px;
+	height: calc(var(--reading-font-size) * 1.5);
+	color: var(--muted-text);
+	pointer-events: none;
+}
+
+.dream-editor .resonance-bullet svg {
+	width: 12px;
+	height: 12px;
+}
+
 .dream-editor .resonance-item [data-resonance-delete] {
 	opacity: 0;
 }

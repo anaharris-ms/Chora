@@ -69,7 +69,9 @@ describe("Dream passage matching", function PassageTests()
 		const root = document.createElement("div");
 		root.className = "shell";
 		const stylesheet = document.createElement("style");
-		stylesheet.textContent = readFileSync("src/renderer/styles/workspace-theme.css", "utf8");
+		const baseStyles = readFileSync("src/renderer/styles/base.css", "utf8");
+		const workspaceStyles = readFileSync("src/renderer/styles/workspace-theme.css", "utf8");
+		stylesheet.textContent = `${baseStyles}\n${workspaceStyles}`;
 		document.head.append(stylesheet);
 		document.body.append(root);
 		const panel = new DocumentPanel(root, events, library, controller);
@@ -100,6 +102,8 @@ describe("Dream passage matching", function PassageTests()
 			const labels = Array.from(passageSelect.options).map(function GetLabel(option): string { return option.text; });
 			expect(labels).toEqual(["340a", "340b", "341c"]);
 			expect(passageSelect.value).toBe("340a");
+			const firstPassage = root.querySelector<HTMLElement>("[data-locator='340a']")!;
+			expect(getComputedStyle(firstPassage).getPropertyValue("content-visibility")).not.toBe("auto");
 			passageSelect.value = "341c";
 			passageSelect.dispatchEvent(new Event("change", { bubbles: true }));
 			expect(root.querySelector<HTMLInputElement>("[data-locator-jump]")?.value).toBe("341c");

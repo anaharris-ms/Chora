@@ -234,6 +234,14 @@ describe("DreamPanel", function DreamPanelTests()
 		expect(store.GetActiveDream()?.signals[0]?.resonances).toHaveLength(1);
 		expect(row.querySelector("[data-resonance-input]")).toBeNull();
 		expect(row.querySelector(".resonance-note")?.textContent).toBe("A remembered passage");
+		const bullet = row.querySelector<HTMLElement>(".resonance-bullet")!;
+		expect(bullet.tagName).toBe("SPAN");
+		expect(bullet.getAttribute("aria-hidden")).toBe("true");
+		expect(bullet.querySelector("svg")).not.toBeNull();
+		expect(bullet.nextElementSibling?.classList.contains("resonance-note")).toBe(true);
+		bullet.click();
+		expect(row.querySelector("[data-resonance-input]")).toBeNull();
+		expect(row.querySelector<HTMLDetailsElement>("[data-resonance-section]")?.open).toBe(true);
 		plus.click();
 		const nextInput = row.querySelector<HTMLInputElement>("[data-resonance-input]")!;
 		expect(document.activeElement).toBe(nextInput);

@@ -5,7 +5,7 @@ import { DreamController } from "./DreamController.js";
 import { MarkdownEditor } from "../ui/MarkdownEditor.js";
 import type { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
 import { createElement, MessageCircle, Link2, Plus } from "lucide";
-import { LinkIcon, SaveIcon, TrashIcon, MoreIcon } from "../ui/Icons.js";
+import { LinkIcon, SaveIcon, TrashIcon, MoreIcon, NextIcon } from "../ui/Icons.js";
 
 // Owns signal row DOM and disclosure behavior, without replacing the Dream editor.
 export class DreamSignalsPanel extends TabPanel
@@ -407,7 +407,7 @@ export class DreamSignalsPanel extends TabPanel
 			? `<span class="resonance-armed-hint">Select a passage, then choose &ldquo;Attach to Resonance&rdquo; &middot; <button class="resonance-armed-cancel button-control" data-resonance-attach-cancel type="button">Cancel</button></span>`
 			: `<button class="dream-icon-button button-control resonance-icon-button" data-resonance-attach="${EscapeHtml(resonance.id)}" type="button" title="Attach passage" aria-label="Attach passage">${LinkIcon}</button>`;
 		const targets = this.RenderResonanceTargets(resonance);
-		return `<div class="resonance-item" data-resonance-item="${EscapeHtml(resonance.id)}"><div class="resonance-item-row"><button class="resonance-note button-control" data-resonance-edit="${EscapeHtml(resonance.id)}" type="button">${EscapeHtml(resonance.note)}</button><span class="resonance-item-actions">${attachControl}<button class="dream-icon-button button-control resonance-icon-button" data-resonance-delete="${EscapeHtml(resonance.id)}" type="button" title="Delete resonance" aria-label="Delete resonance">${TrashIcon}</button></span></div>${targets}</div>`;
+		return `<div class="resonance-item" data-resonance-item="${EscapeHtml(resonance.id)}"><div class="resonance-item-row"><span class="resonance-bullet" aria-hidden="true">${NextIcon}</span><button class="resonance-note button-control" data-resonance-edit="${EscapeHtml(resonance.id)}" type="button">${EscapeHtml(resonance.note)}</button><span class="resonance-item-actions">${attachControl}<button class="dream-icon-button button-control resonance-icon-button" data-resonance-delete="${EscapeHtml(resonance.id)}" type="button" title="Delete resonance" aria-label="Delete resonance">${TrashIcon}</button></span></div>${targets}</div>`;
 	}
 
 	// Renders the attached-passage chips for one resonance, or nothing when it has none.
