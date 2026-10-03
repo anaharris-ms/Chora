@@ -16,6 +16,10 @@
 }
 
 .markdown-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--dream-background);
 	display: flex;
 	flex-wrap: wrap;
 	gap: 2px;

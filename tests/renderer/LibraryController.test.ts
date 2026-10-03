@@ -57,20 +57,18 @@ describe("LibraryController", function LibraryControllerTests()
 		controller = new LibraryController(events, errors, store, new LibraryGateway());
 	});
 
-	it("loads the library and publishes the opened document with its source notice", async function OpensInitialDocument()
+	it("loads the library and publishes an opened-state notification", async function OpensInitialDocument()
 	{
-		let openedDocument: LibraryText | null = null;
-		let openedNotice: SourceNotice | null = null;
-		events.Subscribe("library.text-opened", (event) =>
+		let opened = false;
+		events.Subscribe("library.text-opened", () =>
 		{
-			openedDocument = event.text;
-			openedNotice = event.sourceNotice;
+			opened = true;
 		});
 
 		await controller.StartAsync();
 
-		expect(openedDocument).toEqual(document);
-		expect(openedNotice).toEqual(sourceNotice);
+		expect(opened).toBe(true);
+		expect(store.GetText()).toEqual(document);
 		expect(store.GetSourceNotice()).toEqual(sourceNotice);
 		expect(store.GetSnapshot().texts).toEqual([summary]);
 	});

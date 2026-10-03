@@ -49,7 +49,7 @@ export class LibraryController
 			this.store.Open(text, notice);
 			this.SaveLastWorkId(textId);
 			this.SetFocusSegment(text.segments[0]?.key ?? "");
-			await this.events.PublishAsync("library.text-opened", { text, sourceNotice: notice });
+			await this.events.PublishAsync("library.text-opened", {});
 		}
 		catch (error)
 		{
@@ -62,7 +62,7 @@ export class LibraryController
 	{
 		this.store.Open(text, null);
 		this.SetFocusSegment(text.segments[0]?.key ?? "");
-		void this.events.PublishAsync("library.text-opened", { text, sourceNotice: null });
+		void this.events.PublishAsync("library.text-opened", {});
 	}
 
 	// Reconciles a raw browser selection into canonical form and publishes it when changed.

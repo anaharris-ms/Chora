@@ -2,6 +2,14 @@ import type { Dream, DreamSignal, DreamResonance, ResonanceTarget, SourceSelecti
 import { SessionStore } from "../core/session/SessionStore.js";
 import type { LibraryText } from "../../shared/library/LibraryTypes.js";
 import type { TextSelection } from "../../shared/library/SelectionTypes.js";
+import { DreamMarkdownDocument } from "../../shared/dreams/DreamMarkdownDocument.js";
+
+interface DreamMarkdownDraft
+{
+	markdown: string;
+	appliedMarkdown: string;
+	baseline: Dream;
+}
 
 // A resonance anchored to a displayed passage, with enough context to return to its originating signal.
 export interface ResonanceHit
@@ -10,7 +18,6 @@ export interface ResonanceHit
 	readonly dreamTitle: string;
 	readonly signalId: string;
 	readonly signalText: string;
-	readonly resonanceId: string;
 	readonly note: string;
 }
 
@@ -33,7 +40,7 @@ export interface DreamPassageFilter
 }
 
 // Lifecycle of the active Dream's most recent save attempt.
-export type DreamSaveState = "idle" | "saving" | "saved" | "error";
+export type DreamSaveState = "idle" | "saving" | "error";
 
 // Session-persisted snapshot of the active Dream editing session.
 interface DreamSessionSnapshot
@@ -42,6 +49,7 @@ interface DreamSessionSnapshot
 	dream: Dream;
 	// Whether the active Dream had unsaved changes at the time of the snapshot.
 	isDirty: boolean;
+	markdownDraft?: DreamMarkdownDraft | null;
 }
 
 // Result of a named mutation to the active Dream.
@@ -78,6 +86,7 @@ export class DreamStore
 	private passageFilter: DreamPassageFilter | null = null;
 	// Signal and resonance currently armed to receive an attached passage, or null when none is armed.
 	private armedResonanceAttach: ArmedResonanceAttach | null = null;
+	private markdownDraft: DreamMarkdownDraft | null = null;
 
 	// Returns a snapshot of the active source restriction.
 	public GetPassageFilter(): DreamPassageFilter | null
@@ -101,6 +110,7 @@ export class DreamStore
 		{
 			this.SetActiveDream(snapshot.dream);
 			this.isDirty = snapshot.isDirty;
+			this.markdownDraft = snapshot.markdownDraft ?? null;
 		}
 	}
 
@@ -399,7 +409,7 @@ export class DreamStore
 							for (const key of covered)
 							{
 								const list = hits.get(key) ?? [];
-								list.push({ dreamId: dream.id, dreamTitle: dream.title, signalId: signal.id, signalText: signal.text, resonanceId: resonance.id, note: resonance.note });
+								list.push({ dreamId: dream.id, dreamTitle: dream.title, signalId: signal.id, signalText: signal.text, note: resonance.note });
 								hits.set(key, list);
 							}
 						}
@@ -421,7 +431,96 @@ export class DreamStore
 	// Returns whether the active Dream has unsaved changes.
 	public GetIsDirty(): boolean
 	{
-		return this.isDirty;
+		const dirty = this.isDirty || (this.markdownDraft !== null && this.markdownDraft.markdown !== this.markdownDraft.appliedMarkdown);
+		return dirty;
+	}
+
+	public GetMarkdownDraft(): string | null
+	{
+		const markdown = this.markdownDraft?.markdown ?? null;
+		return markdown;
+	}
+
+	public BeginMarkdownEditing(): void
+	{
+		if (this.activeDream !== null && this.markdownDraft === null)
+		{
+			const markdown = DreamMarkdownDocument.Serialize(this.activeDream);
+			this.markdownDraft = { markdown, appliedMarkdown: markdown, baseline: structuredClone(this.activeDream) };
+			this.Persist();
+		}
+	}
+
+	public UpdateMarkdownDraft(markdown: string): void
+	{
+		if (this.markdownDraft !== null)
+		{
+			this.markdownDraft.markdown = markdown;
+			this.revision += 1;
+			this.saveState = "idle";
+			this.Persist();
+		}
+	}
+
+	public GetMarkdownError(): string | null
+	{
+		let message: string | null = null;
+		try
+		{
+			this.ScanMarkdownDraft();
+		}
+		catch (error)
+		{
+			message = error instanceof Error ? error.message : "Invalid Dream Markdown.";
+		}
+		return message;
+	}
+
+	public ApplyMarkdownDraft(): boolean
+	{
+		let changed = false;
+		const scanned = this.ScanMarkdownDraft();
+		if (scanned !== null && this.markdownDraft !== null)
+		{
+			if (JSON.stringify(scanned) !== JSON.stringify(this.activeDream))
+			{
+				this.SetActiveDream(scanned);
+				this.isDirty = true;
+				this.revision += 1;
+				changed = true;
+			}
+			this.markdownDraft.baseline = structuredClone(scanned);
+			this.markdownDraft.appliedMarkdown = this.markdownDraft.markdown;
+			this.Persist();
+		}
+		return changed;
+	}
+
+	public EndMarkdownEditing(): void
+	{
+		this.markdownDraft = null;
+		this.saveState = "idle";
+		this.Persist();
+	}
+
+	private ScanMarkdownDraft(): Dream | null
+	{
+		let result: Dream | null = null;
+		if (this.markdownDraft !== null)
+		{
+			if (this.activeDream !== null && this.markdownDraft.markdown === this.markdownDraft.appliedMarkdown && JSON.stringify(this.activeDream) !== JSON.stringify(this.markdownDraft.baseline))
+			{
+				const markdown = DreamMarkdownDocument.Serialize(this.activeDream);
+				this.markdownDraft = { markdown, appliedMarkdown: markdown, baseline: structuredClone(this.activeDream) };
+				this.Persist();
+			}
+			if (JSON.stringify(this.activeDream) !== JSON.stringify(this.markdownDraft.baseline))
+			{
+				throw new Error("The Dream changed in another view. Copy your Markdown draft before cancelling and reopening the editor.");
+			}
+			result = DreamMarkdownDocument.Scan(this.markdownDraft.markdown, this.markdownDraft.baseline);
+		}
+		return result;
 	}
 
 	// Returns the lifecycle of the active Dream's most recent save attempt.
@@ -445,6 +544,7 @@ export class DreamStore
 	// Opens a Dream for editing and records whether it starts with unsaved changes.
 	public Open(dream: Dream, isDirty: boolean): void
 	{
+		if (this.markdownDraft !== null) throw new Error("Save or cancel Markdown editing before opening another Dream.");
 		this.CancelPersistence();
 		this.SetActiveDream(structuredClone(dream));
 		this.isDirty = isDirty;
@@ -457,6 +557,7 @@ export class DreamStore
 	public Close(): void
 	{
 		this.CancelPersistence();
+		this.markdownDraft = null;
 		this.SetActiveDream(null);
 		this.isDirty = false;
 		this.revision = 0;
@@ -547,12 +648,13 @@ export class DreamStore
 	// Commits a successful save when no further mutation has occurred since it began.
 	public MarkSaved(dream: Dream, savedRevision: number): void
 	{
-		if (savedRevision === this.revision)
+		if (savedRevision === this.revision && this.activeDream?.id === dream.id)
 		{
 			this.CancelPersistence();
 			this.SetActiveDream(structuredClone(dream));
+			if (this.markdownDraft !== null) this.markdownDraft.baseline = structuredClone(dream);
 			this.isDirty = false;
-			this.saveState = "saved";
+			this.saveState = "idle";
 			this.Persist();
 		}
 	}
@@ -670,8 +772,7 @@ export class DreamStore
 	{
 		if (this.activeDream !== null)
 		{
-			this.sessions.Save(DreamStore.SessionKey, { dream: this.activeDream, isDirty: this.isDirty });
+			this.sessions.Save(DreamStore.SessionKey, { dream: this.activeDream, isDirty: this.isDirty, markdownDraft: this.markdownDraft });
 		}
 	}
 }
-

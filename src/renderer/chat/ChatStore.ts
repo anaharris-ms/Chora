@@ -95,7 +95,7 @@ export class ChatStore
 	// Returns an immutable snapshot of the active conversation's messages.
 	public GetMessages(): readonly ChatMessage[]
 	{
-		return this.messages;
+		return structuredClone(this.messages);
 	}
 
 	// Returns the identifier of the active conversation, or null when it is unsaved.
@@ -124,19 +124,19 @@ export class ChatStore
 	// Returns the models available for a new conversation.
 	public GetProviderOptions(): readonly ProviderOption[]
 	{
-		return this.providerOptions;
+		return structuredClone(this.providerOptions);
 	}
 
 	// Replaces the selectable model catalogue without changing an active selection.
 	public SetProviderOptions(options: ProviderOption[]): void
 	{
-		this.providerOptions = [...options];
+		this.providerOptions = structuredClone(options);
 	}
 
 	// Returns the tools the assistant may invoke during a conversation.
 	public GetTools(): readonly ChatToolDefinition[]
 	{
-		return this.tools;
+		return structuredClone(this.tools);
 	}
 
 	// Returns the lifecycle of the active request.
@@ -202,8 +202,8 @@ export class ChatStore
 			this.provider = defaultOption.providerId;
 			this.modelId = defaultOption.modelId;
 		}
-		this.providerOptions = [...options];
-		this.tools = [...tools];
+		this.providerOptions = structuredClone(options);
+		this.tools = structuredClone(tools);
 	}
 
 	// Appends the reader's message and marks the request as in flight.
@@ -230,7 +230,7 @@ export class ChatStore
 	public CompleteRequest(conversationId: string, message: ChatMessage): void
 	{
 		this.conversationId = conversationId;
-		this.messages.push(message);
+		this.messages.push(structuredClone(message));
 		this.status = "idle";
 		this.streamText = "";
 		this.activeRequestId = null;

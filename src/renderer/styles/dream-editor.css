@@ -1,3 +1,51 @@
+.dream-markdown-tab {
+	grid-column: 1 / -1;
+	grid-row: 2;
+	min-width: 0;
+	min-height: 0;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+}
+
+.dream-markdown-actions {
+	display: flex;
+	gap: 6px;
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--dream-background);
+	padding: 6px 0;
+}
+
+.dream-markdown-input {
+	background: var(--dream-background);
+	color: var(--app-text);
+	border: 1px solid var(--panel-border);
+	padding: 10px;
+	flex: 1;
+	width: 100%;
+	min-height: 220px;
+	resize: none;
+	box-sizing: border-box;
+	font-family: monospace;
+	font-size: var(--reading-font-size);
+	line-height: 1.6;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.dream-markdown-error {
+	color: var(--danger, #b52a32);
+	margin: 4px 0 8px;
+	overflow-wrap: anywhere;
+}
+
+.dream-markdown-preview .ProseMirror {
+	font-size: var(--reading-font-size);
+	overflow-wrap: anywhere;
+}
+
 .signal-header {
 	display: flex;
 	align-items: flex-start;
@@ -586,4 +634,23 @@
 .popup-body section > h4 {
 	margin: 1rem 1.25rem 0.5rem;
 	font-size: 0.85rem;
+}
+
+.dream-markdown-preview .markdown-content {
+	resize: none;
+	overflow: visible;
+}
+
+.dream-markdown-preview pre {
+	white-space: pre-wrap;
+}
+
+.dream-tabs-host .tab-list {
+	gap: 12px;
+	min-width: 0;
+}
+
+.dream-tabs-host .tab-list button {
+	min-width: 0;
+	white-space: normal;
 }

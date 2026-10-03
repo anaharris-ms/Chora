@@ -6,7 +6,8 @@ import type { LibraryText, LibraryTextSummary, SourceNotice } from "../shared/li
 import type { Dream } from "../shared/dreams/DreamTypes.js";
 import type { PatternRecord } from "../shared/patterns/PatternTypes.js";
 import { IPC_CHANNELS } from "../shared/contracts/IpcChannels.js";
-import type { ApiSubscription, ChoraApi } from "../shared/contracts/ChoraApi.js";
+import type { ApiSubscription, ChoraApi, FormattingAction } from "../shared/contracts/ChoraApi.js";
+import type { LookupBounds, LookupCommand, LookupState } from "../shared/library/LookupTypes.js";
 
 async function ListLibraryTexts(): Promise<LibraryTextSummary[]>
 {
@@ -52,6 +53,18 @@ async function ShowDreamSourceContextMenu(): Promise<SelectionAction>
 	return result as SelectionAction;
 }
 
+async function ShowFormattingContextMenu(): Promise<FormattingAction>
+{
+	const result = await new Promise<FormattingAction>(function AwaitNativeMenu(resolve): void
+	{
+		ipcRenderer.once(IPC_CHANNELS.showFormattingContextMenu, function ReceiveAction(_event, action: FormattingAction): void
+		{
+			resolve(action);
+		});
+	});
+	return result;
+}
+
 async function CopySelectedText(selectedText: string): Promise<void>
 {
 	await ipcRenderer.invoke(IPC_CHANNELS.copySelectedText, selectedText);
@@ -60,6 +73,40 @@ async function CopySelectedText(selectedText: string): Promise<void>
 async function LookUpWord(selectedText: string): Promise<void>
 {
 	await ipcRenderer.invoke(IPC_CHANNELS.lookUpWord, selectedText);
+}
+
+// Reads dictionary state when the renderer mounts.
+async function GetLookupState(): Promise<LookupState>
+{
+	const state = await ipcRenderer.invoke(IPC_CHANNELS.getLookupState);
+	return state as LookupState;
+}
+
+// Places or hides the isolated dictionary view.
+async function SetLookupBounds(bounds: LookupBounds | null): Promise<void>
+{
+	await ipcRenderer.invoke(IPC_CHANNELS.setLookupBounds, bounds);
+}
+
+// Sends a dictionary toolbar command.
+async function ExecuteLookupCommand(command: LookupCommand): Promise<void>
+{
+	await ipcRenderer.invoke(IPC_CHANNELS.lookupCommand, command);
+}
+
+// Subscribes to dictionary navigation and loading state.
+function SubscribeLookupState(callback: (state: LookupState) => void): ApiSubscription
+{
+	function ReceiveState(_event: Electron.IpcRendererEvent, state: LookupState): void
+	{
+		callback(state);
+	}
+	function Unsubscribe(): void
+	{
+		ipcRenderer.removeListener(IPC_CHANNELS.lookupStateChanged, ReceiveState);
+	}
+	ipcRenderer.on(IPC_CHANNELS.lookupStateChanged, ReceiveState);
+	return Unsubscribe;
 }
 
 async function StartChat(context: ChatContext, selection: ModelSelection, question: string, requestId: string): Promise<ChatResult>
@@ -174,8 +221,13 @@ const api: ChoraApi = {
 	SubscribeExternalTextLoaded,
 	ShowSelectionContextMenu,
 	ShowDreamSourceContextMenu,
+	ShowFormattingContextMenu,
 	CopySelectedText,
 	LookUpWord,
+	GetLookupState,
+	SetLookupBounds,
+	ExecuteLookupCommand,
+	SubscribeLookupState,
 	StartChat,
 	ContinueChat,
 	ListChatConversations,

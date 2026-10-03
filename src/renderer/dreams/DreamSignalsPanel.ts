@@ -74,6 +74,7 @@ export class DreamSignalsPanel extends TabPanel
 			}
 			else
 			{
+				this.editors.get(signal.id)?.SetMarkdown(signal.description);
 				this.RefreshRowResonances(signal.id, row);
 			}
 			const header = this.navigation.get(signal.id)!;
@@ -392,7 +393,6 @@ export class DreamSignalsPanel extends TabPanel
 		let content = "";
 		if (signal.resonances.length > 0)
 		{
-			content = "";
 			for (const resonance of signal.resonances) content += this.RenderResonanceItem(signal.id, resonance);
 		}
 		return content;

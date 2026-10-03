@@ -28,7 +28,7 @@ export class DocumentPanel
 		private readonly events: ChoraEventBus<ChoraEvents>,
 		private readonly library: LibraryStore,
 		private readonly controller: LibraryController,
-		private readonly settings: ReadingSettingsStore = new ReadingSettingsStore())
+		private readonly settings: ReadingSettingsStore)
 	{
 		this.root.addEventListener("change", this.HandleChange.bind(this));
 		this.root.addEventListener("input", this.HandleInput.bind(this));
@@ -53,9 +53,10 @@ export class DocumentPanel
 	}
 
 	// Routes a text-opened application event to a fresh render.
-	private HandleTextOpened(event: ChoraEvents["library.text-opened"]): void
+	private HandleTextOpened(): void
 	{
-		this.Update(event.text, event.sourceNotice);
+		const snapshot = this.library.GetSnapshot();
+		if (snapshot.text !== null) this.Update(snapshot.text, snapshot.sourceNotice);
 	}
 
 	// Routes a jump-requested application event to the scroll workflow.

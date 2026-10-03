@@ -1,10 +1,8 @@
 import matter from "gray-matter";
-import type { Dream, SourceSelection } from "../../shared/dreams/DreamTypes.js";
+import type { Dream } from "../../shared/dreams/DreamTypes.js";
 
 // Frontmatter shape parsed from a Dream Markdown file.
-type ParsedDreamData = Partial<Dream> & {
-	source?: SourceSelection;
-};
+type ParsedDreamData = Partial<Dream>;
 
 // Builds a Dream from parsed Markdown data, or null when required fields are missing.
 function BuildDream(record: ParsedDreamData): Dream | null

@@ -118,7 +118,7 @@ describe("Chat deletion", function ChatDeletionTests()
 		store.OpenConversation(CreateConversation("second"));
 		store.SetDraft("Keep second draft");
 		store.BeginRequest("Question", "request");
-		await events.PublishAsync("chat.changed", { messages: [], status: "submitting" });
+		await events.PublishAsync("chat.changed", {});
 		expect(root.querySelector<HTMLButtonElement>("[data-chat-delete]")?.disabled).toBe(true);
 		expect(await controller.DeleteConversationAsync("first")).toBe(false);
 		expect(gateway.DeleteConversationAsync).not.toHaveBeenCalled();

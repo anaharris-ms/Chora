@@ -34,6 +34,12 @@ export class DreamGateway
 		return window.chora.CopySelectedText(text);
 	}
 
+	// Looks up selected source text using the reader's configured dictionary.
+	public LookUpAsync(text: string): Promise<void>
+	{
+		return window.chora.LookUpWord(text);
+	}
+
 	// Allocates a new canonical identifier for a Dream or Dream signal from the main process.
 	public AllocateIdAsync(): Promise<string>
 	{

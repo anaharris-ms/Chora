@@ -10,6 +10,7 @@ import { CloseIcon, SaveIcon, TrashIcon, MoreIcon, EditIcon, AddIcon, SearchIcon
 import { TabControl } from "../ui/TabControl.js";
 import { DreamSignalsPanel } from "./DreamSignalsPanel.js";
 import { DreamExegesisPanel } from "./DreamExegesisPanel.js";
+import { DreamMarkdownPanel } from "./DreamMarkdownPanel.js";
 import { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
 import { createElement, MessageCircle } from "lucide";
 
@@ -29,12 +30,12 @@ export class DreamPanel
 	private tabs: TabControl | null = null;
 	// Signals content owned by the tab control.
 	private signalsPanel: DreamSignalsPanel | null = null;
+	private exegesisPanel: DreamExegesisPanel | null = null;
+	private markdownPanel: DreamMarkdownPanel | null = null;
 	// Identity of the Dream currently mounted in the editor.
 	private mountedDreamId: string | null = null;
 	// Popup containing Dream naming and destructive actions.
 	private readonly manageSignalsPopup: PopupPanel | null;
-	// Popup reviewing every resonance captured on the active Dream.
-	private readonly resonancesPopup: PopupPanel | null;
 
 	// Wires up DOM and application-event listeners, then renders the initial view.
 	public constructor(
@@ -52,8 +53,6 @@ export class DreamPanel
 		this.root.addEventListener("contextmenu", this.HandleContextMenuAsync.bind(this));
 		this.manageSignalsPopup = mode === "editor" ? new PopupPanel("Rename Dream") : null;
 		this.manageSignalsPopup?.OnBodyInput(this.HandleSettingsInput.bind(this));
-		this.resonancesPopup = mode === "editor" ? new PopupPanel("Resonances") : null;
-		this.resonancesPopup?.OnBodyClick(this.HandleResonancesPopupClick.bind(this));
 		this.subscriptions.push(this.events.Subscribe("dream.signal-focus-requested", this.HandleSignalFocusRequested.bind(this)));
 		this.subscriptions.push(this.events.Subscribe("dream.opened", this.HandleDreamOpened.bind(this)));
 		this.subscriptions.push(this.events.Subscribe("dream.catalogue-changed", this.HandleCatalogueChanged.bind(this)));
@@ -74,7 +73,6 @@ export class DreamPanel
 		for (const unsubscribe of this.subscriptions) unsubscribe();
 		this.subscriptions.length = 0;
 		this.manageSignalsPopup?.Dispose();
-		this.resonancesPopup?.Dispose();
 		this.tabs?.Dispose();
 	}
 
@@ -88,6 +86,8 @@ export class DreamPanel
 			this.tabs?.Dispose();
 			this.tabs = null;
 			this.signalsPanel = null;
+			this.exegesisPanel = null;
+			this.markdownPanel = null;
 			this.mountedDreamId = null;
 			this.root.replaceChildren();
 		}
@@ -102,13 +102,16 @@ export class DreamPanel
 				chatIcon.setAttribute("aria-hidden", "true");
 				chatButton?.append(chatIcon);
 				this.signalsPanel = new DreamSignalsPanel(this.controller, this.errors);
-				const exegesis = new DreamExegesisPanel(this.controller, dream.reflection, this.errors);
-				this.tabs = new TabControl([this.signalsPanel, exegesis], "Dream content");
+				this.exegesisPanel = new DreamExegesisPanel(this.controller, dream.reflection, this.errors);
+				this.markdownPanel = new DreamMarkdownPanel(this.controller, this.store, this.errors);
+				this.tabs = new TabControl([this.signalsPanel, this.exegesisPanel, this.markdownPanel], "Dream content");
+				if (this.store.GetMarkdownDraft() !== null) this.tabs.Select("markdown");
 				const host = this.root.querySelector("[data-dream-tabs]");
 				host?.append(this.tabs.Root);
 				this.mountedDreamId = dream.id;
 			}
 			this.signalsPanel?.Update(dream);
+			this.exegesisPanel?.Update(dream.reflection);
 			const source = this.root.querySelector<HTMLElement>("[data-dream-source]");
 			if (source !== null && source.textContent !== dream.source.selectedText) source.textContent = dream.source.selectedText;
 			const meta = this.root.querySelector<HTMLElement>("[data-dream-source-meta]");
@@ -116,7 +119,6 @@ export class DreamPanel
 		}
 		this.UpdateStatus();
 		this.RefreshManageSignalsPopup();
-		this.RefreshResonancesPopup();
 	}
 
 	// Renders the catalogue header, search field, and grouped Dream list.
@@ -222,7 +224,7 @@ export class DreamPanel
 	{
 		const title = EscapeHtml(dream.title || "Untitled Dream");
 		const buttons = `<button data-dream-chat type="button">Discuss Dream</button><button data-save-dream type="button">${SaveIcon}Save Dream</button><button data-close-dream type="button">${CloseIcon}Close Dream</button>`;
-		const header = `<header class="dream-header dream-editor-header"><div class="dream-title-line"><h2 data-dream-heading title="${title}">${title}</h2><button class="dream-icon-button button-control" data-manage-signals type="button" title="Rename Dream" aria-label="Rename Dream">${EditIcon}</button></div><div class="dream-toolbar"><span class="dream-toolbar-status" data-dream-status></span><details class="action-menu"><summary title="Dream actions" aria-label="Dream actions">${MoreIcon}</summary><div class="action-menu-items">${buttons}<button data-refresh-dreams type="button">Refresh Dreams</button><button data-delete-dream type="button">${TrashIcon}Delete Dream</button></div></details></div></header>`;
+		const header = `<header class="dream-header dream-editor-header"><div class="dream-title-line"><h2 data-dream-heading title="${title}">${title}</h2><button class="dream-icon-button button-control" data-manage-signals type="button" title="Rename Dream" aria-label="Rename Dream">${EditIcon}</button></div><div class="dream-toolbar"><span class="dream-toolbar-status" data-dream-status role="status" aria-live="polite"></span><details class="action-menu"><summary title="Dream actions" aria-label="Dream actions">${MoreIcon}</summary><div class="action-menu-items">${buttons}<button data-refresh-dreams type="button">Refresh Dreams</button><button data-delete-dream type="button">${TrashIcon}Delete Dream</button></div></details></div></header>`;
 
 		return header;
 	}
@@ -276,63 +278,6 @@ export class DreamPanel
 		}
 	}
 
-	// Renders every resonance on the active Dream, grouped by originating signal, with a Reveal action per entry.
-	private RenderResonancesList(dream: Dream): string
-	{
-		let rows = "";
-
-		for (const signal of dream.signals)
-		{
-			for (const resonance of signal.resonances)
-			{
-				const note = EscapeHtml(resonance.note);
-				const signalText = EscapeHtml(signal.text);
-				const targetCount = resonance.targets.length;
-				const targetLabel = targetCount > 0 ? `<span class="resonance-review-targets">${targetCount} attached passage${targetCount === 1 ? "" : "s"}</span>` : "";
-				rows += `<div class="resonance-review-item"><div class="resonance-review-copy"><span class="resonance-review-signal">${signalText}</span><span class="resonance-review-note">${note}</span>${targetLabel}</div><button class="dream-action-link button-control" data-reveal-resonance-signal="${EscapeHtml(signal.id)}" type="button">Reveal</button></div>`;
-			}
-		}
-
-		const body = rows.length > 0 ? rows : `<p class="dream-empty">No resonances yet.</p>`;
-		return body;
-	}
-
-	// Opens the Resonances popup for the active Dream.
-	private OpenResonancesPopup(): void
-	{
-		const dream = this.store.GetActiveDream();
-
-		if (this.resonancesPopup !== null && dream !== null)
-		{
-			this.resonancesPopup.SetBodyHtml(this.RenderResonancesList(dream));
-			this.resonancesPopup.Open();
-		}
-	}
-
-	// Keeps the Resonances popup in sync with the active Dream while it is open.
-	private RefreshResonancesPopup(): void
-	{
-		const dream = this.store.GetActiveDream();
-		if (this.resonancesPopup !== null && this.resonancesPopup.IsOpen)
-		{
-			if (dream === null) this.resonancesPopup.Close();
-			else this.resonancesPopup.SetBodyHtml(this.RenderResonancesList(dream));
-		}
-	}
-
-	// Routes a click inside the Resonances popup to revealing the originating signal.
-	private HandleResonancesPopupClick(event: MouseEvent): void
-	{
-		const target = event.target as HTMLElement | null;
-		const signalId = target?.closest<HTMLElement>("[data-reveal-resonance-signal]")?.dataset.revealResonanceSignal;
-
-		if (signalId !== undefined)
-		{
-			this.resonancesPopup?.Close();
-			this.UpdateAndScrollToSignal(signalId);
-		}
-	}
-
 	// Renames through the existing dirty-state and autosave workflow.
 	private HandleSettingsInput(event: Event): void
 	{
@@ -348,7 +293,6 @@ export class DreamPanel
 		const dreamId = target?.closest<HTMLElement>("[data-dream-id]")?.dataset.dreamId;
 		const actionMenu = target?.closest<HTMLDetailsElement>(".action-menu");
 		if (actionMenu !== null && actionMenu !== undefined && target?.closest("button") !== null) actionMenu.open = false;
-		const signalId = target?.closest<HTMLElement>("[data-remove-signal]")?.dataset.removeSignal;
 		const book = target?.closest<HTMLElement>("[data-book-toggle]")?.dataset.bookToggle;
 		const clearFilter = target?.closest("[data-clear-passage-filter]");
 		if (clearFilter !== null && clearFilter !== undefined)
@@ -358,14 +302,12 @@ export class DreamPanel
 
 		if (dreamId !== undefined) this.controller.Open(dreamId);
 		if (target?.closest("[data-manage-signals]") !== null) this.OpenManageSignalsPopup();
-		if (target?.closest("[data-open-resonances]") !== null) this.OpenResonancesPopup();
 		if (book !== undefined)
 		{
 			if (this.expandedBooks.has(book)) this.expandedBooks.delete(book);
 			else this.expandedBooks.add(book);
 			this.Update();
 		}
-		if (signalId !== undefined) this.controller.RemoveSignal(signalId);
 		if (target?.closest("[data-dream-chat]") !== null) this.controller.ChatWithDream();
 		if (target?.closest("[data-save-dream]") !== null) void this.controller.SaveAsync();
 		if (target?.closest("[data-close-dream]") !== null) void this.controller.CloseAsync();
@@ -469,6 +411,7 @@ export class DreamPanel
 	// Refreshes the status line and disables the save buttons while a save is in flight.
 	private UpdateStatus(): void
 	{
+		this.markdownPanel?.Refresh();
 		const heading = this.root.querySelector<HTMLElement>("[data-dream-heading]");
 		const dream = this.store.GetActiveDream();
 		if (heading !== null && dream !== null)
@@ -485,7 +428,7 @@ export class DreamPanel
 		for (let index = 0; index < saveButtons.length; index += 1)
 		{
 			const button = saveButtons[index];
-			if (button !== undefined) button.disabled = saveState === "saving";
+			if (button !== undefined) button.disabled = saveState === "saving" || this.store.GetMarkdownError() !== null;
 		}
 	}
 
@@ -571,4 +514,3 @@ export class DreamPanel
 		this.Update();
 	}
 }
-

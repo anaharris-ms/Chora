@@ -33,20 +33,20 @@ export class LibraryStore
 	// Returns an immutable snapshot of the full Library state.
 	public GetSnapshot(): LibrarySnapshot
 	{
-		return { texts: [...this.texts], text: this.text, sourceNotice: this.sourceNotice, selection: this.selection, focus: this.focus };
+		return structuredClone({ texts: this.texts, text: this.text, sourceNotice: this.sourceNotice, selection: this.selection, focus: this.focus });
 	}
 
 	// Replaces the Library catalogue with a freshly loaded summary list.
 	public SetLibrary(texts: LibraryTextSummary[]): void
 	{
-		this.texts = [...texts];
+		this.texts = structuredClone(texts);
 	}
 
 	// Opens a text for reading and clears any selection or reading focus from the previous text.
 	public Open(text: LibraryText, sourceNotice: SourceNotice | null): void
 	{
-		this.text = text;
-		this.sourceNotice = sourceNotice;
+		this.text = structuredClone(text);
+		this.sourceNotice = structuredClone(sourceNotice);
 		this.selection = null;
 		this.focus = null;
 	}
@@ -54,36 +54,36 @@ export class LibraryStore
 	// Records the reader's current explicit passage selection.
 	public SetSelection(selection: TextSelection | null): void
 	{
-		this.selection = selection;
+		this.selection = structuredClone(selection);
 	}
 
 	// Records the reading-focus passage used as a selection fallback.
 	public SetFocus(focus: TextSelection | null): void
 	{
-		this.focus = focus;
+		this.focus = structuredClone(focus);
 	}
 
 	// Returns the text currently open for reading, or null when none is open.
 	public GetText(): LibraryText | null
 	{
-		return this.text;
+		return structuredClone(this.text);
 	}
 
 	// Returns the source attribution for the open text, or null when none applies.
 	public GetSourceNotice(): SourceNotice | null
 	{
-		return this.sourceNotice;
+		return structuredClone(this.sourceNotice);
 	}
 
 	// Returns the reader's current explicit passage selection, or null when none is active.
 	public GetSelection(): TextSelection | null
 	{
-		return this.selection;
+		return structuredClone(this.selection);
 	}
 
 	// Returns the reader's explicit selection, falling back to the reading focus when none is active.
 	public GetContextSelection(): TextSelection | null
 	{
-		return this.selection ?? this.focus;
+		return structuredClone(this.selection ?? this.focus);
 	}
 }

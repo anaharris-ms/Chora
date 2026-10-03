@@ -27,6 +27,11 @@ export class DreamExegesisPanel extends TabPanel
 		super.Dispose();
 	}
 
+	public Update(reflection: string): void
+	{
+		this.editor.SetMarkdown(reflection);
+	}
+
 	// Delegates edits and autosave to the controller.
 	private HandleChange(markdown: string): void
 	{

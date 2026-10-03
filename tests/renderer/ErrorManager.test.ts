@@ -1,7 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+// @vitest-environment happy-dom
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorManager } from "../../src/renderer/core/diagnostics/RendererErrorManager.js";
 import { ChoraEventBus } from "../../src/renderer/core/events/ChoraEventBus.js";
 import type { ChoraEvents, ErrorRecord } from "../../src/renderer/core/events/ChoraEvents.js";
+
+afterEach(function RestoreMocks(): void
+{
+	vi.restoreAllMocks();
+});
 
 describe("ErrorManager", function ErrorManagerTests()
 {

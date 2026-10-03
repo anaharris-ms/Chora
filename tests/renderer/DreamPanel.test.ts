@@ -89,7 +89,81 @@ describe("DreamPanel", function DreamPanelTests()
 		document.body.replaceChildren();
 		vi.clearAllTimers();
 		vi.useRealTimers();
+	});
+
+	it("renders save feedback only from the authoritative Dream state", async function RendersSaveState()
+	{
+		const status = root.querySelector<HTMLElement>("[data-dream-status]")!;
+		expect(status.textContent).toBe("Saved");
+		expect(status.getAttribute("role")).toBe("status");
+
+		store.UpdateTitle("Changed");
+		await events.PublishAsync("dream.changed", {});
+		expect(status.textContent).toBe("Unsaved");
+
+		store.SetSaveState("error");
+		await events.PublishAsync("dream.save-state-changed", {});
+		expect(status.textContent).toBe("Save failed");
+
+		const dream = store.GetActiveDream()!;
+		store.MarkSaved(dream, store.GetRevision());
+		await events.PublishAsync("dream.saved", {});
+		expect(status.textContent).toBe("Saved");
 		vi.restoreAllMocks();
+	});
+
+	it("renders, copies and edits the whole Dream while blocking invalid saves", async function WholeDreamMarkdownAsync()
+	{
+		const copy = vi.spyOn(gateway, "CopyAsync").mockResolvedValue(undefined);
+		const tabs = root.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+		expect(Array.from(tabs, function Label(tab): string | null { return tab.textContent; })).toEqual(["Signals", "General Observations", "Markdown"]);
+		tabs[2]!.click();
+		const preview = root.querySelector<HTMLElement>(".dream-markdown-preview")!;
+		expect(preview.querySelector('[contenteditable="true"]')).toBeNull();
+		expect(preview.textContent).toContain("First description");
+		expect(preview.textContent).toContain("Initial Exegesis");
+		expect(preview.textContent).not.toContain("<!-- chora:");
+		root.querySelector<HTMLButtonElement>('[data-dream-markdown-action="copy"]')!.click();
+		await Promise.resolve();
+		expect(copy).toHaveBeenCalledWith(expect.stringContaining("## General Observations"));
+		root.querySelector<HTMLButtonElement>('[data-dream-markdown-action="edit"]')!.click();
+		const input = root.querySelector<HTMLTextAreaElement>(".dream-markdown-input")!;
+		const original = input.value;
+		input.value = original.replace("## Signals", "");
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		expect(root.querySelector<HTMLButtonElement>('[data-dream-markdown-action="save"]')!.disabled).toBe(true);
+		expect(root.querySelector<HTMLButtonElement>("[data-save-dream]")!.disabled).toBe(true);
+		root.dispatchEvent(new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true }));
+		await vi.advanceTimersByTimeAsync(800);
+		expect(gateway.SaveAsync).not.toHaveBeenCalled();
+		expect(input.value).toBe(original.replace("## Signals", ""));
+		input.value = original.replace("First description", "**Edited signal**").replace("Initial Exegesis", "Edited observations").replace("# A long Dream title", "# New title");
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		root.querySelector<HTMLButtonElement>('[data-dream-markdown-action="save"]')!.click();
+		await vi.waitFor(function Saved(): void { expect(input.hidden).toBe(true); });
+		expect(store.GetActiveDream()?.reflection).toBe("Edited observations");
+		expect(root.querySelector("[data-dream-heading]")?.textContent).toBe("New title");
+		expect(root.querySelector(".signal-markdown-editor strong")?.textContent).toBe("Edited signal");
+		expect(root.querySelector(".dream-exegesis-markdown")?.textContent).toContain("Edited observations");
+		expect(preview.textContent).toContain("Edited observations");
+	});
+
+	it("cancels an invalid draft and restores save controls without changing the Dream", async function CancelsMarkdownAsync()
+	{
+		root.querySelectorAll<HTMLButtonElement>('[role="tab"]')[2]!.click();
+		root.querySelector<HTMLButtonElement>('[data-dream-markdown-action="edit"]')!.click();
+		const input = root.querySelector<HTMLTextAreaElement>(".dream-markdown-input")!;
+		input.value = "broken";
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		expect(root.querySelector<HTMLButtonElement>("[data-save-dream]")!.disabled).toBe(true);
+		root.querySelector<HTMLButtonElement>('[data-dream-markdown-action="cancel"]')!.click();
+		await Promise.resolve();
+		expect(input.hidden).toBe(true);
+		expect(store.GetMarkdownDraft()).toBeNull();
+		expect(store.GetActiveDream()).toEqual(CreateDream());
+		expect(root.querySelector<HTMLButtonElement>("[data-save-dream]")!.disabled).toBe(false);
+		await vi.advanceTimersByTimeAsync(800);
+		expect(gateway.SaveAsync).not.toHaveBeenCalled();
 	});
 
 	it("renders a heading and selectable quotation, retaining source disclosure on structural updates", async function PreservesSource()
@@ -97,6 +171,8 @@ describe("DreamPanel", function DreamPanelTests()
 		expect(root.querySelector("[data-dream-title]")).toBeNull();
 		expect(root.querySelector("[data-dream-heading]")?.textContent).toBe("A long Dream title");
 		expect(root.querySelector(".dream-editor-header [data-open-resonances]")).toBeNull();
+		expect(document.querySelectorAll(".popup-overlay")).toHaveLength(1);
+		expect(document.querySelector(".popup-header h4")?.textContent).toBe("Rename Dream");
 		const details = root.querySelector<HTMLDetailsElement>(".dream-source-section")!;
 		const source = root.querySelector("[data-dream-source]")!;
 		expect(source.tagName).toBe("BLOCKQUOTE");
@@ -136,6 +212,9 @@ describe("DreamPanel", function DreamPanelTests()
 			settings.Apply();
 			const selectors = [".dream-source", ".signal-heading", ".signal-markdown-editor .ProseMirror p", ".resonance-note", ".resonance-input", ".dream-exegesis-markdown .ProseMirror p"];
 			const toolbarLabel = root.querySelector<HTMLElement>(".resonance-section-heading")!;
+			const formattingToolbar = root.querySelector<HTMLElement>(".signal-markdown-editor .markdown-toolbar")!;
+			expect(getComputedStyle(formattingToolbar).position).toBe("sticky");
+			expect(getComputedStyle(formattingToolbar).top).toBe("0px");
 			const toolbarSize = getComputedStyle(toolbarLabel).fontSize;
 			for (const delta of [0, 2, -1])
 			{
@@ -183,7 +262,7 @@ describe("DreamPanel", function DreamPanelTests()
 		await vi.advanceTimersByTimeAsync(800);
 		expect(gateway.SaveAsync).toHaveBeenCalledWith(expect.objectContaining({ reflection: expect.stringContaining("**Initial Exegesis**") }));
 		expect(store.GetActiveDream()?.signals[0]?.description).toContain("**First description**");
-		expect(store.GetSaveState()).toBe("saved");
+		expect(store.GetSaveState()).toBe("idle");
 	});
 
 	it("selects one signal at a time without replacing editors or resonance drafts", function SelectsOneSignal()
@@ -278,7 +357,7 @@ describe("DreamPanel", function DreamPanelTests()
 		expect(root.querySelector('[data-signal-id="signal-1"]')).toBeNull();
 		expect(root.querySelector<HTMLElement>('[data-signal-id="signal-2"]')?.hidden).toBe(false);
 		expect(gateway.SaveAsync).toHaveBeenCalledWith(expect.objectContaining({ title: "Renamed Dream" }));
-		expect(store.GetSaveState()).toBe("saved");
+		expect(store.GetSaveState()).toBe("idle");
 	});
 
 	it("focuses the added signal description and resets tabs when opening a different Dream", async function SelectsSignals()
@@ -308,7 +387,7 @@ describe("DreamPanel", function DreamPanelTests()
 		dream.id = "dream-2";
 		dream.reflection = "Another Dream";
 		store.Open(dream, false);
-		await events.PublishAsync("dream.opened", { dream });
+		await events.PublishAsync("dream.opened", {});
 		expect(root.querySelector("[data-dream-exegesis]")).not.toBe(oldEditor);
 		await vi.waitFor(function NewEditorReady(): void
 		{

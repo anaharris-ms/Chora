@@ -1,13 +1,11 @@
-import type { ChatMessage } from "../../../shared/chat/ChatTypes.js";
 import type { TextSelection } from "../../../shared/library/SelectionTypes.js";
-import type { LibraryText, SourceNotice } from "../../../shared/library/LibraryTypes.js";
-import type { Dream } from "../../../shared/dreams/DreamTypes.js";
 import type { ErrorRecord } from "../../../shared/diagnostics/DiagnosticManager.js";
 
 // Every application event name and its payload shape, published on the shared ChoraEventBus.
 export interface ChoraEvents
 {
-	"library.text-opened": { text: LibraryText; sourceNotice: SourceNotice | null };
+	"lookup.changed": Record<string, never>;
+	"library.text-opened": Record<string, never>;
 	"library.text-open-requested": { textId: string };
 	"library.selection-changed": { textId: string; hasSelection: boolean };
 	"library.focus-changed": { textId: string; segmentKey: string };
@@ -18,7 +16,7 @@ export interface ChoraEvents
 	"dream.signal-add-requested": { selection: TextSelection };
 	"dream.source-extend-requested": { selection: TextSelection };
 	"dream.signal-added": { dreamId: string; signalId: string };
-	"dream.opened": { dream: Dream };
+	"dream.opened": Record<string, never>;
 	// Requests that a specific signal (and, once mounted, its resonances) be revealed within the active Dream.
 	"dream.signal-focus-requested": { dreamId: string; signalId: string };
 	// Reports a passage selection chosen to attach to the currently armed resonance.
@@ -31,11 +29,11 @@ export interface ChoraEvents
 	// Announces a change to the catalogue's source restriction.
 	"dream.passage-filter-changed": Record<string, never>;
 	"dream.closed": Record<string, never>;
-	"dream.changed": { dreamId: string; isDirty: boolean };
+	"dream.changed": Record<string, never>;
 	"dream.structure-changed": { dreamId: string };
-	"dream.saved": { dream: Dream };
-	"dream.save-state-changed": { state: "idle" | "saving" | "saved" | "error" };
-	"chat.changed": { messages: ChatMessage[]; status: string };
+	"dream.saved": Record<string, never>;
+	"dream.save-state-changed": Record<string, never>;
+	"chat.changed": Record<string, never>;
 	// Requests a conversation focused on one reader-selected signal.
 	"chat.signal-requested": { dreamId: string; signalId: string };
 	// Requests a conversation about the whole Dream, independent of any specific signal.

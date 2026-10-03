@@ -1,21 +1,24 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MarkdownEditor } from "../../src/renderer/ui/MarkdownEditor.js";
+import { MarkdownEditorGateway } from "../../src/renderer/ui/MarkdownEditorGateway.js";
+import { EditorView } from "@milkdown/kit/prose/view";
 import { ErrorManager } from "../../src/renderer/core/diagnostics/RendererErrorManager.js";
 import { ChoraEventBus } from "../../src/renderer/core/events/ChoraEventBus.js";
 import type { ChoraEvents } from "../../src/renderer/core/events/ChoraEvents.js";
 import { ParseDreamMarkdown, SerializeDreamMarkdown } from "../../src/main/dreams/DreamMarkdownCodec.js";
 import type { Dream } from "../../src/shared/dreams/DreamTypes.js";
+import { DreamMarkdownDocument } from "../../src/shared/dreams/DreamMarkdownDocument.js";
 
 // Mounted editors are disposed even when an assertion fails.
 const editors: MarkdownEditor[] = [];
 
 // Mounts the actual Milkdown wrapper with a tracked change callback.
-async function CreateEditorAsync(markdown: string, change = vi.fn()): Promise<MarkdownEditor>
+async function CreateEditorAsync(markdown: string, change = vi.fn(), readOnly = false): Promise<MarkdownEditor>
 {
 	const events = new ChoraEventBus<ChoraEvents>();
 	const errors = new ErrorManager(events);
-	const editor = new MarkdownEditor(markdown, "Test description", change, errors);
+	const editor = new MarkdownEditor(markdown, "Test description", change, errors, readOnly);
 	editors.push(editor);
 	document.body.append(editor.Root);
 	await editor.Ready;
@@ -41,10 +44,74 @@ afterEach(async function CleanupAsync()
 	editors.length = 0;
 	await Promise.resolve();
 	document.body.replaceChildren();
+	vi.restoreAllMocks();
 });
 
 describe("MarkdownEditor", function MarkdownEditorTests()
 {
+	it("round trips a whole Dream and rejects damaged protected sections", function ScansDreamMarkdown()
+	{
+		const selection = { documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 7 }, selectedText: "κατέβην", locatorStart: null, locatorEnd: null };
+		const dream: Dream = {
+			id: "dream", workId: "republic", dialogue: "Republic", title: "Descent",
+			source: { ...selection, sourceRefs: ["s1"], startSourceRef: "s1", endSourceRef: "s1" },
+			signals: [{ id: "signal", sourceRef: "s1", text: "κατέβην", selection, description: "An observation", resonances: [{ id: "resonance", note: "A connection", targets: [{ id: "target", workId: "republic", selection }], candidates: [], createdAt: "2026-01-01", updatedAt: "2026-01-01" }] }],
+			reflection: "A reflection", linkedDreamIds: ["another"], createdAt: "2026-01-01", updatedAt: "2026-01-01"
+		};
+		const markdown = DreamMarkdownDocument.Serialize(dream);
+		expect(DreamMarkdownDocument.Scan(markdown, dream)).toEqual(dream);
+		const edited = markdown.replace("An observation", "**New observation**").replace("A reflection", "New reflection").replace("A connection", "New connection");
+		const result = DreamMarkdownDocument.Scan(edited, dream);
+		expect(result.signals[0]?.description).toBe("**New observation**");
+		expect(result.signals[0]?.resonances[0]?.note).toBe("New connection");
+		expect(result.reflection).toBe("New reflection");
+		expect(result.source).toEqual(dream.source);
+		expect(result.signals[0]?.resonances[0]?.targets).toEqual(dream.signals[0]?.resonances[0]?.targets);
+		const invalidDocuments = [
+			markdown.replace("chora:description:signal", "chora:description:unknown"),
+			markdown.replace("<!-- chora:end -->", ""),
+			markdown + "\nextra",
+			markdown.replace("> κατέβην", "> changed"),
+			markdown.replace("A connection", ""),
+			markdown.replace("## General Observations", ""),
+			markdown.replace("A reflection", "```\nunfinished"),
+			markdown.replace("A reflection", "<!-- unfinished"),
+			markdown.replace("An observation", "## General Observations"),
+			markdown.replace("<!-- chora:observations -->", "<!-- chora:observations -->\n\n<!-- chora:observations -->"),
+			markdown.replace("<!-- chora:title -->", "<!-- chora:source -->").replace("<!-- chora:source -->\n##", "<!-- chora:title -->\n##")
+		];
+		for (const invalid of invalidDocuments)
+		{
+			expect(function ScanInvalid(): void { DreamMarkdownDocument.Scan(invalid, dream); }).toThrow();
+		}
+	});
+
+	it("renders read-only Markdown safely and updates without publishing edits", async function RendersReadOnlyAsync()
+	{
+		const change = vi.fn();
+		const editor = await CreateEditorAsync('[unsafe](javascript:alert%281%29)\n\n![remote](https://example.com/tracker.png)\n\n<script>alert(1)</script>', change, true);
+		expect(editor.Root.querySelector('[contenteditable="true"]')).toBeNull();
+		expect(editor.Root.querySelector('[role="document"]')).not.toBeNull();
+		expect(editor.Root.querySelector<HTMLElement>(".markdown-toolbar")!.hidden).toBe(true);
+		expect(editor.Root.querySelector('img,script,iframe,a[href^="javascript:"]')).toBeNull();
+		editor.SetMarkdown("# Updated Dream\n\n**New observation**");
+		expect(editor.Root.querySelector("strong")?.textContent).toBe("New observation");
+		expect(change).not.toHaveBeenCalled();
+	});
+
+	it("replaces external content without publishing changes or retaining stale undo history", async function ReplacesDocumentAsync()
+	{
+		const change = vi.fn();
+		const editor = await CreateEditorAsync("Original", change);
+		SelectContent(editor);
+		editor.Root.querySelector<HTMLButtonElement>('[data-markdown-command="bold"]')!.click();
+		change.mockClear();
+		editor.SetMarkdown("Replacement");
+		expect(editor.Root.querySelector<HTMLButtonElement>('[data-markdown-command="undo"]')!.disabled).toBe(true);
+		expect(editor.GetMarkdown()).toBe("Replacement");
+		expect(change).not.toHaveBeenCalled();
+	});
+
 	it("renders Greek and formatting without rewriting the original Markdown on initialization", async function RendersMarkdownAsync()
 	{
 		const change = vi.fn();
@@ -70,6 +137,51 @@ describe("MarkdownEditor", function MarkdownEditorTests()
 		editor.Root.querySelector<HTMLButtonElement>('[data-markdown-command="undo"]')!.click();
 		expect(editor.Root.querySelector("strong")).toBeNull();
 		expect(editor.GetMarkdown().trim()).toBe("κατέβην");
+	});
+
+	it.each(["bold", "italic"] as const)("formats a right-clicked word with %s", async function FormatsContextWordAsync(command)
+	{
+		const change = vi.fn();
+		const editor = await CreateEditorAsync("κατέβην yesterday", change);
+		vi.spyOn(EditorView.prototype, "posAtCoords").mockReturnValue({ pos: 3, inside: 0 });
+		const menu = vi.spyOn(MarkdownEditorGateway.prototype, "ShowFormattingMenuAsync").mockResolvedValue(command);
+		const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 });
+		editor.Root.querySelector("[contenteditable=true]")!.dispatchEvent(event);
+		await vi.waitFor(function Formatted(): void
+		{
+			const selector = command === "bold" ? "strong" : "em";
+			expect(editor.Root.querySelector(selector)?.textContent).toBe("κατέβην");
+		});
+		expect(event.defaultPrevented).toBe(false);
+		expect(menu).toHaveBeenCalledOnce();
+		expect(change).toHaveBeenCalled();
+		editor.Root.querySelector<HTMLButtonElement>('[data-markdown-command="undo"]')!.click();
+		expect(editor.GetMarkdown().trim()).toBe("κατέβην yesterday");
+	});
+
+	it("preserves a selected phrase when right-clicking inside it", async function PreservesContextSelectionAsync()
+	{
+		const editor = await CreateEditorAsync("κατέβην yesterday");
+		SelectContent(editor);
+		vi.spyOn(EditorView.prototype, "posAtCoords").mockReturnValue({ pos: 3, inside: 0 });
+		vi.spyOn(MarkdownEditorGateway.prototype, "ShowFormattingMenuAsync").mockResolvedValue("bold");
+		editor.Root.querySelector("[contenteditable=true]")!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await vi.waitFor(function EntireSelectionFormatted(): void
+		{
+			expect(editor.Root.querySelector("strong")?.textContent).toBe("κατέβην yesterday");
+		});
+	});
+
+	it("leaves text untouched when the context menu is dismissed", async function CancelsContextMenuAsync()
+	{
+		const change = vi.fn();
+		const editor = await CreateEditorAsync("Original text", change);
+		vi.spyOn(EditorView.prototype, "posAtCoords").mockReturnValue({ pos: 3, inside: 0 });
+		vi.spyOn(MarkdownEditorGateway.prototype, "ShowFormattingMenuAsync").mockResolvedValue(null);
+		editor.Root.querySelector("[contenteditable=true]")!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+		await Promise.resolve();
+		expect(editor.GetMarkdown()).toBe("Original text");
+		expect(change).not.toHaveBeenCalled();
 	});
 
 	it("renders unsafe links inertly without image or executable HTML elements", async function NeutralizesUnsafeContentAsync()

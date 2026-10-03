@@ -89,7 +89,7 @@ describe("Signal chat", function SignalChatTests()
 			composer.focus();
 			vi.spyOn(console, "error").mockImplementation(function IgnoreExpectedBusyError(): void {});
 			store.BeginRequest("Pending question", "pending");
-			await events.PublishAsync("chat.changed", { messages: [], status: "submitting" });
+			await events.PublishAsync("chat.changed", {});
 			expect(root.querySelector("[data-chat-input]")).toBe(composer);
 			expect(composer.disabled).toBe(false);
 			expect(document.activeElement).toBe(composer);
@@ -99,19 +99,19 @@ describe("Signal chat", function SignalChatTests()
 			composer.value = "Draft during reply";
 			composer.dispatchEvent(new Event("input", { bubbles: true }));
 			composer.setSelectionRange(2, 7);
-			await events.PublishAsync("chat.changed", { messages: [], status: "submitting" });
+			await events.PublishAsync("chat.changed", {});
 			expect(document.activeElement).toBe(composer);
 			expect(composer.selectionStart).toBe(2);
 			expect(composer.selectionEnd).toBe(7);
 			expect(root.querySelector<HTMLSelectElement>("[data-chat-provider]")?.disabled).toBe(true);
 			store.AppendStream("Partial reply");
-			await events.PublishAsync("chat.changed", { messages: [], status: "streaming" });
+			await events.PublishAsync("chat.changed", {});
 			expect(root.querySelector<HTMLSelectElement>("[data-chat-provider]")?.disabled).toBe(true);
 			await events.PublishAsync("chat.signal-requested", { dreamId: "dream", signalId: "first" });
 			expect(store.GetStatus()).toBe("streaming");
 			expect(store.GetSignalContext()?.dream.focusedSignal?.id).toBe("second");
 			store.FailRequest("Pending question", "Cancelled by test");
-			await events.PublishAsync("chat.changed", { messages: [], status: "failed" });
+			await events.PublishAsync("chat.changed", {});
 			expect(root.querySelector<HTMLSelectElement>("[data-chat-provider]")?.disabled).toBe(false);
 			dreams.Close();
 			await controller.SendAsync("And this?");
@@ -131,7 +131,7 @@ describe("Signal chat", function SignalChatTests()
 				{ providerId: "copilot-relay", modelId: "other-model", modelName: "Other model" }
 			]);
 			store.SetDraft("Keep this question");
-			await events.PublishAsync("chat.changed", { messages: [], status: "idle" });
+			await events.PublishAsync("chat.changed", {});
 			const nativeConfirm = vi.spyOn(window, "confirm");
 			let modelSelect = root.querySelector<HTMLSelectElement>("[data-chat-provider]")!;
 			expect(modelSelect.disabled).toBe(false);

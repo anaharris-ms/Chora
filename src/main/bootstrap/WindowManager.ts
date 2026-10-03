@@ -1,7 +1,8 @@
 import { app, BrowserWindow, type ContextMenuParams, type Event, type RenderProcessGoneDetails } from "electron";
 import path from "node:path";
 import { Errors } from "../diagnostics/MainErrorManager.js";
-import { ShowEditContextMenu } from "../shell/ContextMenu.js";
+import { ShowEditContextMenu, ShowFormattingContextMenu } from "../shell/ContextMenu.js";
+import { IPC_CHANNELS } from "../../shared/contracts/IpcChannels.js";
 
 // Owns Chora's single native BrowserWindow instance and its lifecycle.
 export class ChoraWindowManager
@@ -58,9 +59,17 @@ export class ChoraWindowManager
 	}
 
 	// Shows the native editing menu for a right-clicked editable field.
-	private HandleContextMenu(window: BrowserWindow, _event: Event, params: ContextMenuParams): void
+	private async HandleContextMenu(window: BrowserWindow, _event: Event, params: ContextMenuParams): Promise<void>
 	{
-		if (params.isEditable) ShowEditContextMenu(window, params);
+		if (params.isEditable)
+		{
+			if (params.formControlType === "none")
+			{
+				const action = await ShowFormattingContextMenu(window, params);
+				if (!window.isDestroyed()) window.webContents.send(IPC_CHANNELS.showFormattingContextMenu, action);
+			}
+			else ShowEditContextMenu(window, params);
+		}
 	}
 
 	// Reports an unexpected renderer process termination.

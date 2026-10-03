@@ -16,6 +16,7 @@ import { DocumentPanel } from "../../src/renderer/library/DocumentPanel.js";
 import { ChoraEventBus } from "../../src/renderer/core/events/ChoraEventBus.js";
 import type { ChoraEvents } from "../../src/renderer/core/events/ChoraEvents.js";
 import { ErrorManager } from "../../src/renderer/core/diagnostics/RendererErrorManager.js";
+import { ReadingSettingsStore } from "../../src/renderer/core/settings/ReadingSettingsStore.js";
 
 // A passage split across segments followed by two further passages.
 const text: LibraryText = {
@@ -64,7 +65,9 @@ describe("Dream passage matching", function PassageTests()
 		{
 			segment.division = { kind: "book", value: segment.key === "s4" ? "2" : "1" };
 		}
-		library.Open(documentText, null);
+		library.Open(documentText, {
+			source: "Perseus Digital Library", license: "CC BY-SA", editor: null, editionTitle: null, repository: "test"
+		});
 		const controller = new LibraryController(events, errors, library, new LibraryGateway());
 		const root = document.createElement("div");
 		root.className = "shell";
@@ -74,12 +77,10 @@ describe("Dream passage matching", function PassageTests()
 		stylesheet.textContent = `${baseStyles}\n${workspaceStyles}`;
 		document.head.append(stylesheet);
 		document.body.append(root);
-		const panel = new DocumentPanel(root, events, library, controller);
+		const panel = new DocumentPanel(root, events, library, controller, new ReadingSettingsStore());
 		try
 		{
-			await events.PublishAsync("library.text-opened", { text: documentText, sourceNotice: {
-				source: "Perseus Digital Library", license: "CC BY-SA", editor: null, editionTitle: null, repository: "test"
-			} });
+			await events.PublishAsync("library.text-opened", {});
 			expect(root.querySelector<HTMLSelectElement>("[data-reader-work]")?.selectedOptions[0].text).toBe("Greek title");
 			expect(root.querySelector(".work-header-greek")).toBeNull();
 			const headings = Array.from(root.querySelectorAll<HTMLElement>(".book-heading"));
@@ -244,11 +245,11 @@ describe("Dream passage matching", function PassageTests()
 		const readingRoot = document.createElement("div");
 		const catalogueRoot = document.createElement("div");
 		document.body.append(readingRoot, catalogueRoot);
-		const reader = new DocumentPanel(readingRoot, events, library, controller);
+		const reader = new DocumentPanel(readingRoot, events, library, controller, new ReadingSettingsStore());
 		const catalogue = new DreamPanel(catalogueRoot, events, store, dreams, library, "catalogue");
 		try
 		{
-			await events.PublishAsync("library.text-opened", { text, sourceNotice: null });
+			await events.PublishAsync("library.text-opened", {});
 			const select = readingRoot.querySelector<HTMLSelectElement>("[data-reader-work]")!;
 			expect(select.selectedOptions[0].text).toBe("Republic");
 			expect(catalogueRoot.querySelectorAll("[data-dream-id]")).toHaveLength(1);
@@ -269,7 +270,8 @@ describe("Dream passage matching", function PassageTests()
 			expect(store.GetPassageFilter()).toBeNull();
 			expect(store.GetActiveDream()?.id).toBe(dream.id);
 			list.mockResolvedValue([dream]);
-			await events.PublishAsync("library.text-opened", { text: otherText, sourceNotice: null });
+			library.Open(otherText, null);
+			await events.PublishAsync("library.text-opened", {});
 			expect(catalogueRoot.querySelectorAll("[data-dream-id]")).toHaveLength(0);
 		}
 		finally
@@ -325,12 +327,12 @@ describe("Dream passage matching", function PassageTests()
 		const readingRoot = document.createElement("div");
 		const catalogueRoot = document.createElement("div");
 		document.body.append(readingRoot, catalogueRoot);
-		const documentPanel = new DocumentPanel(readingRoot, events, library, libraryController);
+		const documentPanel = new DocumentPanel(readingRoot, events, library, libraryController, new ReadingSettingsStore());
 		const passagePanel = new DreamPassagePanel(readingRoot, events, library, controller);
 		const cataloguePanel = new DreamPanel(catalogueRoot, events, store, controller, library, "catalogue");
 		try
 		{
-			await events.PublishAsync("library.text-opened", { text, sourceNotice: null });
+			await events.PublishAsync("library.text-opened", {});
 			const sourceNode = readingRoot.querySelector(".segment-text");
 			expect(catalogueRoot.querySelector(".catalogue-header")).toBeNull();
 			expect(catalogueRoot.querySelector(".dream-catalogue-controls [data-new-dream]")).not.toBeNull();
@@ -361,7 +363,7 @@ describe("Dream passage matching", function PassageTests()
 
 			await events.PublishAsync("dream.passage-filter-requested", { workId: text.id, segmentKey: "s3" });
 			store.SetCatalogue([single]);
-			await events.PublishAsync("dream.saved", { dream: single });
+			await events.PublishAsync("dream.saved", {});
 			expect(readingRoot.querySelector('[data-passage-dreams="s3"]')).toBeNull();
 			expect(catalogueRoot.querySelector(".dream-empty")?.textContent).toBe("No matching Dreams.");
 			expect(readingRoot.querySelector(".segment-text")).toBe(sourceNode);
@@ -370,7 +372,7 @@ describe("Dream passage matching", function PassageTests()
 			const otherText = structuredClone(text);
 			otherText.id = "other-work";
 			library.Open(otherText, null);
-			await events.PublishAsync("library.text-opened", { text: otherText, sourceNotice: null });
+			await events.PublishAsync("library.text-opened", {});
 			expect(store.GetPassageFilter()).toBeNull();
 			expect(readingRoot.querySelector("[data-passage-dreams]")).toBeNull();
 			expect(failure).not.toHaveBeenCalled();

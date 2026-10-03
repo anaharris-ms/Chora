@@ -1,4 +1,4 @@
-import type { Dream as DreamRecord, DreamSignal as DreamSignalRecord, DreamResonance as DreamResonanceRecord, ResonanceTarget as ResonanceTargetRecord, SourceSelection } from "../../shared/dreams/DreamTypes.js";
+import type { Dream as DreamRecord, DreamSignal as DreamSignalRecord, SourceSelection } from "../../shared/dreams/DreamTypes.js";
 import { DreamSignal } from "./DreamSignal.js";
 
 // Owns one reader-authored Dream and its normalized signals and links.
@@ -11,19 +11,19 @@ export class Dream
 	// Optional human-readable name of the originating work.
 	private readonly dialogue: string | null;
 	// Reader-authored title.
-	private title: string;
+	private readonly title: string;
 	// Owned source selection for this Dream.
-	private source: SourceSelection;
+	private readonly source: SourceSelection;
 	// Signals owned by this Dream.
 	private readonly signals: DreamSignal[];
 	// Reader-authored exegesis.
-	private reflection: string;
+	private readonly reflection: string;
 	// Other Dreams linked by stable identifier.
-	private linkedDreamIds: string[];
+	private readonly linkedDreamIds: string[];
 	// Initial persistence timestamp.
 	private readonly createdAt: string;
 	// Most recent persistence timestamp.
-	private updatedAt: string;
+	private readonly updatedAt: string;
 
 	// Hydrates one Dream and normalizes persisted or IPC-supplied record fields.
 	public constructor(record: DreamRecord)
@@ -46,127 +46,6 @@ export class Dream
 	public GetId(): string
 	{
 		return this.id;
-	}
-
-	// Returns the owning work identifier.
-	public GetWorkId(): string
-	{
-		return this.workId;
-	}
-
-	// Updates the Dream title.
-	public UpdateTitle(title: string): void
-	{
-		this.title = title.trim();
-	}
-
-	// Updates the Dream exegesis.
-	public UpdateReflection(reflection: string): void
-	{
-		this.reflection = reflection;
-	}
-
-	// Replaces the source selection with a normalized source owned by this Dream.
-	public ReplaceSource(source: SourceSelection): void
-	{
-		this.source = this.NormalizeSource(source);
-	}
-
-	// Adds a unique signal to this Dream.
-	public AddSignal(signal: DreamSignalRecord): void
-	{
-		const candidate = new DreamSignal(signal);
-		const signalId = candidate.ToRecord().id;
-		const hasSignal = this.signals.some(function HasSignal(existing: DreamSignal): boolean
-		{
-			const record = existing.ToRecord();
-			const isMatch = record.id === signalId;
-
-			return isMatch;
-		});
-
-		if (hasSignal)
-		{
-			throw new Error(`Dream signal already exists: ${signalId}`);
-		}
-
-		this.signals.push(candidate);
-	}
-
-	// Removes a signal when it belongs to this Dream.
-	public RemoveSignal(signalId: string): void
-	{
-		const index = this.signals.findIndex(function FindSignal(signal: DreamSignal): boolean
-		{
-			const record = signal.ToRecord();
-			const isMatch = record.id === signalId;
-
-			return isMatch;
-		});
-
-		if (index >= 0)
-		{
-			this.signals.splice(index, 1);
-		}
-	}
-
-	// Updates one owned signal's description.
-	public UpdateSignalDescription(signalId: string, description: string): void
-	{
-		const signal = this.signals.find(function FindSignal(candidate: DreamSignal): boolean
-		{
-			const record = candidate.ToRecord();
-			const isMatch = record.id === signalId;
-
-			return isMatch;
-		});
-
-		if (signal !== undefined)
-		{
-			signal.UpdateDescription(description);
-		}
-	}
-
-	// Adds a reader-authored resonance to one owned signal.
-	public AddSignalResonance(signalId: string, resonance: DreamResonanceRecord): void
-	{
-		this.FindSignal(signalId)?.AddResonance(resonance);
-	}
-
-	// Updates one owned resonance's note.
-	public UpdateSignalResonanceNote(signalId: string, resonanceId: string, note: string): void
-	{
-		this.FindSignal(signalId)?.UpdateResonanceNote(resonanceId, note);
-	}
-
-	// Removes one resonance from an owned signal.
-	public RemoveSignalResonance(signalId: string, resonanceId: string): void
-	{
-		this.FindSignal(signalId)?.RemoveResonance(resonanceId);
-	}
-
-	// Attaches a passage target to one owned signal's resonance.
-	public AttachSignalResonanceTarget(signalId: string, resonanceId: string, target: ResonanceTargetRecord): void
-	{
-		this.FindSignal(signalId)?.AttachResonanceTarget(resonanceId, target);
-	}
-
-	// Removes one attached target from an owned signal's resonance.
-	public RemoveSignalResonanceTarget(signalId: string, resonanceId: string, targetId: string): void
-	{
-		this.FindSignal(signalId)?.RemoveResonanceTarget(resonanceId, targetId);
-	}
-
-	// Replaces links after removing duplicates and the Dream's own identity.
-	public SetLinkedDreamIds(linkedDreamIds: readonly string[]): void
-	{
-		this.linkedDreamIds = this.NormalizeLinks(linkedDreamIds);
-	}
-
-	// Sets the persistence timestamp owned by this aggregate.
-	public MarkSaved(updatedAt: string): void
-	{
-		this.updatedAt = updatedAt;
 	}
 
 	// Produces an immutable IPC and persistence record.
@@ -194,14 +73,6 @@ export class Dream
 		};
 
 		return record;
-	}
-
-	// Finds an owned signal by identity, or undefined when it is not present.
-	private FindSignal(signalId: string): DreamSignal | undefined
-	{
-		const signal = this.signals.find((candidate) => candidate.ToRecord().id === signalId);
-
-		return signal;
 	}
 
 	// Normalizes source reference fields required by the current persistence schema.

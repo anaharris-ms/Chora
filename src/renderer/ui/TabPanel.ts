@@ -13,6 +13,10 @@ export abstract class TabPanel
 	}
 
 	// Releases panel-owned DOM and resources.
+	public OnSelected(): void
+	{
+	}
+
 	public Dispose(): void
 	{
 		this.Root.remove();

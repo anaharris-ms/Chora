@@ -7,6 +7,7 @@ import { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
 import { LibraryStore } from "../library/LibraryStore.js";
 import { CompareSelections, IsSelectionWithin, MergeSelections } from "../../shared/library/SelectionService.js";
 import { CreateDreamSourceSelection } from "./SourceSelection.js";
+import { DreamMarkdownDocument } from "../../shared/dreams/DreamMarkdownDocument.js";
 import { DreamGateway } from "./DreamGateway.js";
 import { DreamStore, type ArmedResonanceAttach, type DreamChange, type DreamSaveState, type ResonanceHit } from "./DreamStore.js";
 
@@ -76,11 +77,12 @@ export class DreamController
 	}
 
 	// Refreshes the catalogue and removes stale filters when a text opens.
-	private async HandleFilterTextOpenedAsync(event: ChoraEvents["library.text-opened"]): Promise<void>
+	private async HandleFilterTextOpenedAsync(): Promise<void>
 	{
 		this.store.SetSearchText("");
 		const filter = this.store.GetPassageFilter();
-		if (filter !== null && filter.workId !== event.text.id)
+		const text = this.library.GetText();
+		if (filter !== null && filter.workId !== text?.id)
 		{
 			await this.ClearPassageFilterAsync();
 		}
@@ -116,7 +118,7 @@ export class DreamController
 
 			if (activeDream !== null)
 			{
-				await this.events.PublishAsync("dream.opened", { dream: activeDream });
+				await this.events.PublishAsync("dream.opened", {});
 				if (this.store.GetIsDirty()) this.ScheduleAutosave();
 			}
 		}
@@ -160,7 +162,11 @@ export class DreamController
 	{
 		const document = this.library.GetText();
 
-		if (document !== null)
+		if (this.store.GetMarkdownDraft() !== null)
+		{
+			this.errors.Report("DreamController", new Error("Markdown editing is open."), "Save or cancel Markdown editing before opening another Dream.");
+		}
+		else if (document !== null)
 		{
 			const timestamp = new Date().toISOString();
 			const derivedFields = this.DeriveSourceFields(document, selection.start, selection.end, null);
@@ -180,7 +186,7 @@ export class DreamController
 			};
 
 			this.store.Open(dream, true);
-			void this.events.PublishAsync("dream.opened", { dream });
+			void this.events.PublishAsync("dream.opened", {});
 		}
 	}
 
@@ -189,7 +195,7 @@ export class DreamController
 	{
 		const dream = this.OpenDream(dreamId);
 
-		if (dream !== null) void this.events.PublishAsync("dream.opened", { dream });
+		if (dream !== null) void this.events.PublishAsync("dream.opened", {});
 	}
 
 	// Opens a Dream, then reveals one specific signal, for resonance and passage-discovery navigation.
@@ -199,7 +205,7 @@ export class DreamController
 
 		if (dream !== null)
 		{
-			await this.events.PublishAsync("dream.opened", { dream });
+			await this.events.PublishAsync("dream.opened", {});
 			await this.events.PublishAsync("dream.signal-focus-requested", { dreamId, signalId });
 		}
 	}
@@ -218,7 +224,11 @@ export class DreamController
 		const dream = this.FindCatalogueDream(dreamId);
 		let opened: Dream | null = null;
 
-		if (dream !== null)
+		if (this.store.GetMarkdownDraft() !== null)
+		{
+			this.errors.Report("DreamController", new Error("Markdown editing is open."), "Save or cancel Markdown editing before opening another Dream.");
+		}
+		else if (dream !== null)
 		{
 			if (this.library.GetText()?.id !== dream.workId) void this.events.PublishAsync("library.text-open-requested", { textId: dream.workId });
 			opened = structuredClone(dream);
@@ -234,7 +244,7 @@ export class DreamController
 		this.CancelAutosave();
 		if (this.store.GetIsDirty()) await this.SaveAsync();
 
-		if (!this.store.GetIsDirty())
+		if (!this.store.GetIsDirty() && this.store.GetMarkdownError() === null)
 		{
 			this.store.Close();
 			await this.events.PublishAsync("dream.closed", {});
@@ -513,6 +523,48 @@ export class DreamController
 		if (this.store.GetIsDirty() && this.store.GetSaveState() !== "error") this.ScheduleAutosave();
 	}
 
+	public GetMarkdown(): string
+	{
+		const dream = this.store.GetActiveDream();
+		const draft = this.store.GetMarkdownDraft();
+		const markdown = draft ?? (dream === null ? "" : DreamMarkdownDocument.Serialize(dream));
+		return markdown;
+	}
+
+	public BeginMarkdownEditing(): void
+	{
+		this.store.BeginMarkdownEditing();
+	}
+
+	public UpdateMarkdownDraft(markdown: string): void
+	{
+		this.store.UpdateMarkdownDraft(markdown);
+		this.ScheduleAutosave();
+		this.SetSaveState("idle");
+	}
+
+	public async FinishMarkdownEditingAsync(): Promise<boolean>
+	{
+		await this.SaveAsync();
+		const success = !this.store.GetIsDirty() && this.store.GetSaveState() !== "error" && this.store.GetMarkdownError() === null;
+		if (success) this.store.EndMarkdownEditing();
+		return success;
+	}
+
+	public CancelMarkdownEditing(): void
+	{
+		this.CancelAutosave();
+		this.store.EndMarkdownEditing();
+		this.SetSaveState("idle");
+		if (this.store.GetIsDirty()) this.ScheduleAutosave();
+	}
+
+	public async CopyMarkdownAsync(): Promise<void>
+	{
+		const markdown = this.GetMarkdown();
+		await this.gateway.CopyAsync(markdown);
+	}
+
 	// Returns the reader's visible Dream catalogue, grouped by division when division data is available.
 	public GetCatalogueGroups(searchText: string): DreamCatalogueGroup[]
 	{
@@ -533,6 +585,7 @@ export class DreamController
 		const action = await this.gateway.ShowSourceContextMenuAsync();
 		if (action === "add-dream-source-signal") await this.events.PublishAsync("dream.signal-add-requested", { selection });
 		if (action === "copy-dream-source") await this.gateway.CopyAsync(selection.selectedText);
+		if (action === "lookup") await this.gateway.LookUpAsync(selection.selectedText);
 	}
 
 	// Builds a document selection from a source-passage offset range, reporting rather than throwing when it is invalid.
@@ -559,7 +612,7 @@ export class DreamController
 		{
 			if (change.becameDirty)
 			{
-				void this.events.PublishAsync("dream.changed", { dreamId: change.dream.id, isDirty: true });
+				void this.events.PublishAsync("dream.changed", {});
 			}
 			this.ScheduleAutosave();
 		}
@@ -567,9 +620,22 @@ export class DreamController
 
 	private async PerformSaveAsync(): Promise<void>
 	{
+		let valid = true;
+		try
+		{
+			const changed = this.store.ApplyMarkdownDraft();
+			const dream = this.store.GetActiveDream();
+			if (changed && dream !== null) void this.events.PublishAsync("dream.structure-changed", { dreamId: dream.id });
+		}
+		catch (error)
+		{
+			valid = false;
+			this.SetSaveState("error");
+			this.errors.Error("DreamController", error instanceof Error ? error.message : String(error), error);
+		}
 		const activeDream = this.store.GetActiveDream();
 
-		if (activeDream !== null && !this.isDeleting)
+		if (valid && activeDream !== null && !this.isDeleting)
 		{
 			const revision = this.store.GetRevision();
 			const dream = structuredClone(activeDream);
@@ -582,12 +648,13 @@ export class DreamController
 				const catalogue = await this.gateway.ListAsync();
 				this.store.SetCatalogue(catalogue);
 				this.store.MarkSaved(savedDream, revision);
-				await this.events.PublishAsync("dream.saved", { dream: savedDream });
+				await this.events.PublishAsync("dream.saved", {});
 			}
 			catch (error)
 			{
 				this.SetSaveState("error");
-				this.errors.Report("DreamController", error, "Unable to save the Dream.");
+				const message = error instanceof Error ? error.message : String(error);
+				this.errors.Error("DreamController", message, error);
 			}
 		}
 	}
@@ -645,7 +712,7 @@ export class DreamController
 	private SetSaveState(state: DreamSaveState): void
 	{
 		this.store.SetSaveState(state);
-		void this.events.PublishAsync("dream.save-state-changed", { state });
+		void this.events.PublishAsync("dream.save-state-changed", {});
 	}
 
 	// Routes a create-requested application event to the Dream creation workflow.
@@ -895,4 +962,3 @@ export class DreamController
 		return derivedFields;
 	}
 }
-

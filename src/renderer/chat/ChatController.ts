@@ -184,7 +184,8 @@ export class ChatController
 			}
 			catch (error)
 			{
-				this.errors.Report("ChatController", error, "Unable to delete the conversation. Your chat has not been removed from the list.");
+				const message = error instanceof Error ? error.message : String(error);
+				this.errors.Error("ChatController", message, error);
 			}
 			finally
 			{
@@ -290,14 +291,14 @@ export class ChatController
 		{
 			this.store.SetDraft(retainedDraft);
 		}
-		this.errors.Report("ChatController", error, userMessage);
+		this.errors.Error("ChatController", message, error);
 		void this.PublishChangedAsync();
 	}
 
 	// Publishes the current Chat transcript and status to subscribers.
 	private async PublishChangedAsync(): Promise<void>
 	{
-		await this.events.PublishAsync("chat.changed", { messages: [...this.store.GetMessages()], status: this.store.GetStatus() });
+		await this.events.PublishAsync("chat.changed", {});
 	}
 
 	// Refreshes the renderer catalogue from the main-process conversation repository.

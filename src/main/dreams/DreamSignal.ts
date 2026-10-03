@@ -1,4 +1,4 @@
-import type { DreamSignal as DreamSignalRecord, DreamResonance as DreamResonanceRecord, ResonanceTarget as ResonanceTargetRecord } from "../../shared/dreams/DreamTypes.js";
+import type { DreamSignal as DreamSignalRecord, DreamResonance as DreamResonanceRecord } from "../../shared/dreams/DreamTypes.js";
 
 // Owns the normalized signal attached to a Dream.
 export class DreamSignal
@@ -12,7 +12,7 @@ export class DreamSignal
 	// Exact source text captured for the signal.
 	private readonly text: string;
 	// Reader-authored account of the signal.
-	private description: string;
+	private readonly description: string;
 	// Reader-authored connections arising from this signal.
 	private readonly resonances: DreamResonanceRecord[];
 
@@ -28,78 +28,6 @@ export class DreamSignal
 		this.resonances = this.NormalizeResonances(record.resonances ?? []);
 	}
 
-	// Updates the reader's reflection on this signal.
-	public UpdateDescription(description: string): void
-	{
-		this.description = description;
-	}
-
-	// Adds a unique reader-authored resonance to this signal.
-	public AddResonance(resonance: DreamResonanceRecord): void
-	{
-		this.ValidateIdentifier(resonance.id, "Resonance identifier");
-		this.ValidateNote(resonance.note);
-
-		const hasResonance = this.resonances.some((existing) => existing.id === resonance.id);
-		if (hasResonance) throw new Error(`Resonance already exists: ${resonance.id}`);
-
-		this.resonances.push(this.NormalizeResonance(resonance));
-	}
-
-	// Updates one owned resonance's note.
-	public UpdateResonanceNote(resonanceId: string, note: string): void
-	{
-		this.ValidateNote(note);
-		const resonance = this.FindResonance(resonanceId);
-
-		if (resonance !== undefined)
-		{
-			resonance.note = note.trim();
-			resonance.updatedAt = new Date().toISOString();
-		}
-	}
-
-	// Removes a resonance when it belongs to this signal.
-	public RemoveResonance(resonanceId: string): void
-	{
-		const index = this.resonances.findIndex((candidate) => candidate.id === resonanceId);
-
-		if (index >= 0) this.resonances.splice(index, 1);
-	}
-
-	// Attaches a passage target to a resonance, ignoring an exact duplicate.
-	public AttachResonanceTarget(resonanceId: string, target: ResonanceTargetRecord): void
-	{
-		this.ValidateIdentifier(target.id, "Resonance target identifier");
-		const resonance = this.FindResonance(resonanceId);
-
-		if (resonance !== undefined)
-		{
-			const hasTarget = resonance.targets.some((existing) => existing.id === target.id);
-			if (!hasTarget)
-			{
-				resonance.targets.push(structuredClone(target));
-				resonance.updatedAt = new Date().toISOString();
-			}
-		}
-	}
-
-	// Removes one attached target from a resonance, retaining the resonance itself.
-	public RemoveResonanceTarget(resonanceId: string, targetId: string): void
-	{
-		const resonance = this.FindResonance(resonanceId);
-
-		if (resonance !== undefined)
-		{
-			const index = resonance.targets.findIndex((target) => target.id === targetId);
-			if (index >= 0)
-			{
-				resonance.targets.splice(index, 1);
-				resonance.updatedAt = new Date().toISOString();
-			}
-		}
-	}
-
 	// Produces an immutable persistence and IPC record.
 	public ToRecord(): DreamSignalRecord
 	{
@@ -113,14 +41,6 @@ export class DreamSignal
 		};
 
 		return record;
-	}
-
-	// Finds a resonance owned by this signal, or undefined when it is not present.
-	private FindResonance(resonanceId: string): DreamResonanceRecord | undefined
-	{
-		const resonance = this.resonances.find((candidate) => candidate.id === resonanceId);
-
-		return resonance;
 	}
 
 	// Hydrates unique resonances owned by this signal.
@@ -155,17 +75,6 @@ export class DreamSignal
 		};
 
 		return normalized;
-	}
-
-	// Rejects a resonance note that carries no reader observation.
-	private ValidateNote(note: string): void
-	{
-		const isValid = note.trim().length > 0;
-
-		if (!isValid)
-		{
-			throw new Error("Resonance note must not be empty");
-		}
 	}
 
 	// Rejects identifiers that cannot safely participate in Dream ownership.

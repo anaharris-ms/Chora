@@ -76,6 +76,7 @@ export class TabControl
 				button.tabIndex = selected ? 0 : -1;
 			}
 		}
+		this.Panels[this.selectedIndex]?.OnSelected();
 	}
 
 	// Releases listeners and all owned panels.

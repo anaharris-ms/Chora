@@ -1,15 +1,16 @@
-import { Editor, defaultValueCtx, rootCtx, editorViewCtx, editorViewOptionsCtx, serializerCtx } from "@milkdown/kit/core";
+import { Editor, defaultValueCtx, rootCtx, editorViewCtx, editorViewOptionsCtx, serializerCtx, parserCtx } from "@milkdown/kit/core";
 import type { Ctx } from "@milkdown/kit/ctx";
 import { commonmark } from "@milkdown/kit/preset/commonmark";
 import { history } from "@milkdown/kit/plugin/history";
 import { $prose } from "@milkdown/kit/utils";
-import { Plugin, type EditorState } from "@milkdown/kit/prose/state";
+import { Plugin, TextSelection, EditorState } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { toggleMark, wrapIn, lift, chainCommands } from "@milkdown/kit/prose/commands";
 import { wrapInList } from "@milkdown/kit/prose/schema-list";
 import { undo, redo } from "@milkdown/kit/prose/history";
 import { Bold, Italic, List, ListOrdered, Quote, Link, Unlink, Undo2, Redo2, Check, X, createElement, type IconNode } from "lucide";
 import type { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
+import { MarkdownEditorGateway } from "./MarkdownEditorGateway.js";
 
 // A persistent Milkdown editor that stores Markdown through its owning feature's change handler.
 export class MarkdownEditor
@@ -35,19 +36,23 @@ export class MarkdownEditor
 	private disposed = false;
 	// Indicates that Milkdown has finished initialization.
 	private initialized = false;
+	private replacing = false;
 	// Retained DOM listeners.
 	private readonly clickHandler = this.HandleClick.bind(this);
 	private readonly pointerHandler = this.HandlePointerDown.bind(this);
 	private readonly submitHandler = this.HandleLinkSubmit.bind(this);
 	private readonly keyHandler = this.HandleLinkKeyDown.bind(this);
+	private readonly contextHandler = this.HandleContextMenuAsync.bind(this);
+	private readonly gateway = new MarkdownEditorGateway();
 
 	// Creates the editor without claiming ownership of the Dream or its persistence.
-	public constructor(markdown: string, private readonly label: string, private readonly onChange: (value: string) => void, private readonly errors: ErrorManager)
+	public constructor(markdown: string, private readonly label: string, private readonly onChange: (value: string) => void, private readonly errors: ErrorManager, private readonly readOnly = false)
 	{
 		this.markdown = markdown;
 		this.Root.className = "markdown-editor";
 		this.Root.setAttribute("aria-busy", "true");
 		this.toolbar.className = "markdown-toolbar";
+		this.toolbar.hidden = readOnly;
 		this.toolbar.setAttribute("role", "group");
 		this.toolbar.setAttribute("aria-label", `${label} formatting`);
 		this.AddButton("bold", "Bold", Bold);
@@ -72,6 +77,7 @@ export class MarkdownEditor
 		this.linkForm.append(this.linkInput, apply, cancel);
 		this.Root.append(this.toolbar, this.linkForm, this.content);
 		this.Root.addEventListener("click", this.clickHandler);
+		if (!readOnly) this.content.addEventListener("contextmenu", this.contextHandler);
 		this.toolbar.addEventListener("pointerdown", this.pointerHandler);
 		this.linkForm.addEventListener("submit", this.submitHandler);
 		this.linkForm.addEventListener("keydown", this.keyHandler);
@@ -88,6 +94,33 @@ export class MarkdownEditor
 	public GetMarkdown(): string
 	{
 		return this.markdown;
+	}
+
+	public SetMarkdown(markdown: string): void
+	{
+		if (markdown !== this.markdown && !this.disposed)
+		{
+			this.markdown = markdown;
+			if (this.initialized) this.ReplaceDocument();
+		}
+	}
+
+	private ReplaceDocument(): void
+	{
+		const view = this.editor.ctx.get(editorViewCtx);
+		const parse = this.editor.ctx.get(parserCtx);
+		const doc = parse(this.markdown);
+		this.replacing = true;
+		try
+		{
+			view.updateState(EditorState.create({ doc, schema: view.state.schema, plugins: view.state.plugins }));
+			view.dom.setAttribute("role", this.readOnly ? "document" : "textbox");
+			this.UpdateToolbar(view);
+		}
+		finally
+		{
+			this.replacing = false;
+		}
 	}
 
 	// Gives typing focus to the document once its editor is ready.
@@ -121,6 +154,7 @@ export class MarkdownEditor
 	{
 		this.disposed = true;
 		this.Root.removeEventListener("click", this.clickHandler);
+		this.content.removeEventListener("contextmenu", this.contextHandler);
 		this.toolbar.removeEventListener("pointerdown", this.pointerHandler);
 		this.linkForm.removeEventListener("submit", this.submitHandler);
 		this.linkForm.removeEventListener("keydown", this.keyHandler);
@@ -134,9 +168,15 @@ export class MarkdownEditor
 		ctx.set(rootCtx, this.content);
 		ctx.set(defaultValueCtx, this.markdown);
 		ctx.set(editorViewOptionsCtx, {
-			attributes: { role: "textbox", "aria-label": this.label, "aria-multiline": "true", spellcheck: "true" },
+			editable: this.IsEditable.bind(this),
+			attributes: { role: this.readOnly ? "document" : "textbox", "aria-label": this.label, "aria-multiline": "true", spellcheck: String(!this.readOnly) },
 			nodeViews: { image: this.RenderImageText.bind(this) }
 		});
+	}
+
+	private IsEditable(): boolean
+	{
+		return !this.readOnly;
 	}
 
 	// Displays image alt text without loading media from a Dream's Markdown.
@@ -159,7 +199,7 @@ export class MarkdownEditor
 					{
 						if (!owner.disposed)
 						{
-							if (!previous.doc.eq(view.state.doc))
+							if (!owner.readOnly && !owner.replacing && !previous.doc.eq(view.state.doc))
 							{
 								const serialize = ctx.get(serializerCtx);
 								const markdown = serialize(view.state.doc);
@@ -184,6 +224,7 @@ export class MarkdownEditor
 		{
 			await this.editor.create();
 			this.initialized = true;
+			this.ReplaceDocument();
 			if (this.disposed) await this.DestroyAsync();
 			else
 			{
@@ -261,6 +302,57 @@ export class MarkdownEditor
 			{
 				this.RunCommand(command, view);
 				view.focus();
+			}
+		}
+	}
+
+	private async HandleContextMenuAsync(event: MouseEvent): Promise<void>
+	{
+		if (this.initialized && !this.disposed)
+		{
+			event.stopPropagation();
+			const view = this.editor.ctx.get(editorViewCtx);
+			const original = view.state.doc;
+			try
+			{
+				const command = await this.gateway.ShowFormattingMenuAsync();
+				if (command !== null && !this.disposed && original.eq(view.state.doc))
+				{
+					this.SelectContextWord(view, event);
+					this.RunCommand(command, view);
+					view.focus();
+				}
+			}
+			catch (error)
+			{
+				if (!this.disposed) this.errors.Report("MarkdownEditor", error, "Unable to open the formatting menu.");
+			}
+		}
+	}
+
+	private SelectContextWord(view: EditorView, event: MouseEvent): void
+	{
+		const hit = view.posAtCoords({ left: event.clientX, top: event.clientY });
+		const selection = view.state.selection;
+		if (hit !== null && (selection.empty || hit.pos < selection.from || hit.pos > selection.to))
+		{
+			const position = view.state.doc.resolve(hit.pos);
+			if (position.parent.isTextblock)
+			{
+				const text = position.parent.textBetween(0, position.parent.content.size, "", "\ufffc");
+				const words = text.matchAll(/[\p{L}\p{M}\p{N}_'\u2019]+/gu);
+				for (const word of words)
+				{
+					const start = word.index;
+					const end = start + word[0].length;
+					if (start <= position.parentOffset && position.parentOffset <= end)
+					{
+						const selectedWord = TextSelection.create(view.state.doc, position.start() + start, position.start() + end);
+						const transaction = view.state.tr.setSelection(selectedWord);
+						view.dispatch(transaction);
+						break;
+					}
+				}
 			}
 		}
 	}

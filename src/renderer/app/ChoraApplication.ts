@@ -23,6 +23,10 @@ import { PatternGateway } from "../patterns/PatternGateway.js";
 import { PatternPanel } from "../patterns/PatternPanel.js";
 import { PatternStore } from "../patterns/PatternStore.js";
 import { ReadingSettingsStore, type ReadingFont } from "../core/settings/ReadingSettingsStore.js";
+import { LookupStore } from "../library/lookup/LookupStore.js";
+import { LookupGateway } from "../library/lookup/LookupGateway.js";
+import { LookupController } from "../library/lookup/LookupController.js";
+import { LookupPanel } from "../library/lookup/LookupPanel.js";
 
 type ResizablePane = "left" | "dream";
 
@@ -78,6 +82,9 @@ export class ChoraApplication
 
 	// Owns reading appearance and font settings.
 	private readonly settings = new ReadingSettingsStore();
+	private readonly lookupStore = new LookupStore();
+	private readonly lookupGateway = new LookupGateway();
+	private readonly lookup = new LookupController(this.events, this.lookupStore, this.lookupGateway, this.errors);
 
 	// Creates the application and routes event-bus subscriber failures to the error manager.
 	public constructor(private readonly root: HTMLElement)
@@ -97,10 +104,15 @@ export class ChoraApplication
 			this.settings.Apply();
 			this.root.innerHTML = `<main class="shell"><aside class="left-panel"><nav class="workspace-views" aria-label="Workspace views"><button class="activity-button button-control selected" data-left-view="dreams" type="button" aria-pressed="true">Dreams</button><button class="activity-button button-control" data-left-view="chat" type="button" aria-pressed="false">Chat</button><button class="activity-button button-control" data-left-view="patterns" type="button" aria-pressed="false">Patterns</button></nav><div class="left-view" data-chat-panel hidden></div><div class="left-view" data-pattern-panel hidden></div><div class="left-view" data-dream-catalogue-panel></div></aside><section class="center-panel" data-document-panel></section><aside class="right-panel" data-dream-panel hidden></aside><div class="panel-resize-handle" data-resize-pane="left" role="separator" aria-label="Resize left workspace" aria-orientation="vertical"></div><div class="panel-resize-handle" data-resize-pane="dream" role="separator" aria-label="Resize Dream editor" aria-orientation="vertical"></div></main><div class="application-error" data-error-output hidden></div>`;
 			const chatRoot = this.RequireElement("[data-chat-panel]");
+			const readerColumn = this.RequireElement("[data-document-panel]");
+			readerColumn.removeAttribute("data-document-panel");
+			readerColumn.innerHTML = `<div class="reader-workspace"><section class="document-panel" data-document-panel></section><section data-lookup-panel aria-label="Dictionary" hidden></section></div>`;
 			const patternRoot = this.RequireElement("[data-pattern-panel]");
 			const dreamCatalogueRoot = this.RequireElement("[data-dream-catalogue-panel]");
 			const documentRoot = this.RequireElement("[data-document-panel]");
 			const dreamRoot = this.RequireElement("[data-dream-panel]");
+			const lookupRoot = this.RequireElement("[data-lookup-panel]");
+			this.disposables.push(new LookupPanel(lookupRoot, this.events, this.lookupStore, this.lookup));
 			this.disposables.push(new ChatPanel(chatRoot, this.events, this.chatStore, this.chat));
 			this.disposables.push(new PatternPanel(patternRoot, this.events, this.patternStore, this.patterns));
 			this.disposables.push(new DocumentPanel(documentRoot, this.events, this.libraryStore, this.library, this.settings));
@@ -112,6 +124,7 @@ export class ChoraApplication
 			this.root.addEventListener("change", this.settingsChangeHandler);
 			this.root.addEventListener("pointerdown", this.panelResizePointerDownHandler);
 			this.RegisterApplicationEvents();
+			await this.lookup.StartAsync();
 			await this.dreams.StartAsync();
 			await this.chat.StartAsync();
 			await this.library.StartAsync();
@@ -127,6 +140,7 @@ export class ChoraApplication
 			this.isDisposed = true;
 			for (const disposable of this.disposables) disposable.Dispose();
 			for (const unsubscribe of this.externalSubscriptions) unsubscribe();
+			this.lookup.Dispose();
 			this.chat.Dispose();
 			this.dreamStore.Dispose();
 			this.root.removeEventListener("click", this.leftViewClickHandler);
@@ -199,10 +213,14 @@ export class ChoraApplication
 	}
 
 	// Loads external patterns after a Library text establishes their document identity.
-	private async HandleTextOpened(event: ChoraEvents["library.text-opened"]): Promise<void>
+	private async HandleTextOpened(): Promise<void>
 	{
-		this.patterns.SetDocumentId(event.text.id);
-		await this.patterns.LoadAsync(event.text.id);
+		const text = this.libraryStore.GetText();
+		if (text !== null)
+		{
+			this.patterns.SetDocumentId(text.id);
+			await this.patterns.LoadAsync(text.id);
+		}
 	}
 
 	// Opens a text selected in the main process's application menu or dock.

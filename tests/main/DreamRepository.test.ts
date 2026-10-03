@@ -6,12 +6,12 @@ import { Dream } from "../../src/main/dreams/Dream.js";
 import { DreamLibrary } from "../../src/main/dreams/DreamLibrary.js";
 import { ParseDreamMarkdown, SerializeDreamMarkdown } from "../../src/main/dreams/DreamMarkdownCodec.js";
 import { DreamRepository, type DreamPersistenceRecord } from "../../src/main/dreams/DreamRepository.js";
-import type { Dream } from "../../src/shared/dreams/DreamTypes.js";
+import type { Dream as DreamRecord } from "../../src/shared/dreams/DreamTypes.js";
 
 const GreekPassage = "Κατέβην χθὲς εἰς Πειραιᾶ";
 const directories: string[] = [];
 
-function CreateDream(id: string, title: string): Dream
+function CreateDream(id: string, title: string): DreamRecord
 {
 	return {
 		id,
@@ -117,9 +117,9 @@ describe("Dream library", function DreamLibraryTests()
 		expect(remaining.map((dream) => dream.id)).toEqual(["two"]);
 	});
 
-	it("retains its index until an explicit invalidation", async function RefreshesRepositoryIndexExplicitly()
+	it("reloads persisted records on repeated loads", async function ReloadsRepositoryRecords()
 	{
-		const directory = await mkdtemp(path.join(os.tmpdir(), "chora-dream-index-"));
+		const directory = await mkdtemp(path.join(os.tmpdir(), "chora-dream-reload-"));
 		directories.push(directory);
 		const repository = new DreamRepository(directory);
 		const original = CreateDream("indexed", "Original");
@@ -131,20 +131,16 @@ describe("Dream library", function DreamLibraryTests()
 		const replacement = { ...original, title: "Replacement" };
 		const replacementContent = SerializeDreamMarkdown(replacement);
 		await writeFile(filePath, replacementContent, "utf8");
-		const cached = await repository.LoadAsync();
-		repository.InvalidateIndex();
-		const refreshed = await repository.LoadAsync();
+		const reloaded = await repository.LoadAsync();
 
 		expect(initial[0]?.dream.title).toBe("Original");
-		expect(cached[0]?.dream.title).toBe("Original");
-		expect(refreshed[0]?.dream.title).toBe("Replacement");
+		expect(reloaded[0]?.dream.title).toBe("Replacement");
 	});
 
-	it("normalizes owned links and rejects duplicate signals", () =>
+	it("normalizes owned links and deduplicates hydrated signals", () =>
 	{
 		const record = CreateDream("one", "  Descent  ");
 		record.linkedDreamIds = ["one", "two", "two", "  three  "];
-		const dream = new Dream(record);
 		const signal = {
 			id: "signal",
 			sourceRef: "s1",
@@ -154,8 +150,8 @@ describe("Dream library", function DreamLibraryTests()
 			resonances: []
 		};
 
-		dream.AddSignal(signal);
-		expect(() => dream.AddSignal(signal)).toThrow("Dream signal already exists: signal");
+		record.signals = [signal, signal];
+		const dream = new Dream(record);
 		const normalized = dream.ToRecord();
 
 		expect(normalized.title).toBe("Descent");
