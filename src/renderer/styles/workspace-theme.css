@@ -116,12 +116,6 @@ body {
 	background: #fafafa;
 }
 
-.work-header h1 {
-	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-	font-size: 1.35rem;
-	font-weight: 700;
-}
-
 .text-body {
 	color: #303136;
 }
@@ -134,12 +128,6 @@ body {
 .dream-catalogue h3 {
 	color: #27292e;
 	font-size: 0.86rem;
-}
-
-.catalogue-header {
-	margin: 0 0.35rem 0.45rem;
-	padding: 0 0.25rem 0.6rem;
-	border-bottom-color: var(--panel-border);
 }
 
 .catalogue-group h4,
@@ -190,21 +178,6 @@ body {
 	background: var(--side-panel-background);
 	color: #292b30;
 	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-}
-
-.dream-header {
-	top: -1.55rem;
-	margin: 0 -0.2rem 1.5rem;
-	padding: 0.85rem 0.2rem 0.85rem;
-	border-bottom-color: #e7e7e9;
-	background: color-mix(in srgb, var(--side-panel-background) 97%, transparent);
-}
-
-.dream-header h2 {
-	color: #23252a;
-	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-	font-size: 1.35rem;
-	font-weight: 700;
 }
 
 .dream-toolbar-status,
@@ -260,14 +233,6 @@ body {
 	font-size: 1rem;
 }
 
-.signal-description {
-	min-height: 3.25rem;
-	border-bottom: 0;
-	color: #4c4f56;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	font-size: 0.9rem;
-}
-
 .resonance-item {
 	background: #f5f6f8;
 }
@@ -294,8 +259,7 @@ body {
 }
 
 .dream-field input:focus,
-.dream-field textarea:focus,
-.signal-description:focus {
+.dream-field textarea:focus {
 	border-color: #78aeea;
 	outline: 3px solid rgba(88, 156, 231, 0.15);
 }
@@ -360,41 +324,14 @@ body {
 	color: #303238;
 }
 
-.app-settings {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	-webkit-app-region: no-drag;
-}
-
 .app-setting-stepper {
 	display: flex;
 	align-items: center;
 	gap: 0.15rem;
 }
 
-.app-setting-button {
-	display: grid;
-	place-items: center;
-	min-width: 1.7rem;
-	height: 1.7rem;
-	padding: 0 0.4rem;
-	border: 1px solid #dfe1e5;
-	border-radius: 0.4rem;
-	background: #ffffff;
-	color: #4a4d53;
-	font-size: 0.8rem;
-	cursor: pointer;
-}
-
 .shell {
 	height: calc(100vh - 2.5rem);
-}
-
-:root[data-theme="dark"] .app-setting-button {
-	border-color: var(--panel-border);
-	background: var(--dream-raised);
-	color: var(--app-text);
 }
 
 .dream-catalogue {
@@ -405,24 +342,6 @@ body {
 	background: #fbfcfe;
 	color: #17202c;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.catalogue-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	min-height: 4.2rem;
-	margin: 0;
-	padding: 0 2.25rem;
-	border-bottom: 0;
-}
-
-.catalogue-header h3 {
-	margin: 0;
-	color: #111923;
-	font-size: 2rem;
-	font-weight: 700;
-	letter-spacing: 0;
 }
 
 .catalogue-header-button {
@@ -588,19 +507,6 @@ html {
 	font-size: 16px;
 }
 
-.app-settings {
-	gap: 16px;
-}
-
-.app-settings .app-setting-button {
-	border: 0;
-	background: transparent;
-	color: var(--app-text);
-	font-size: 13px;
-	width: 30px;
-	height: 30px;
-}
-
 .app-setting-stepper {
 	gap: 12px;
 }
@@ -619,12 +525,6 @@ html {
 	color: var(--muted-text);
 }
 
-.application-find > svg {
-	width: 15px;
-	height: 15px;
-	flex-shrink: 0;
-}
-
 .application-find input {
 	min-width: 0;
 	width: 100%;
@@ -637,34 +537,6 @@ html {
 
 .application-find input::placeholder {
 	color: var(--muted-text);
-}
-
-.application-find-actions {
-	display: none;
-	position: absolute;
-	top: 100%;
-	right: 0;
-	background: var(--dream-raised);
-	border: 1px solid var(--panel-border);
-	padding: 4px;
-}
-
-.application-find:focus-within .application-find-actions {
-	display: flex;
-}
-
-.application-find-actions button {
-	width: 28px;
-	height: 28px;
-	border: 0;
-	background: transparent;
-	color: var(--app-text);
-	cursor: pointer;
-}
-
-.application-find-actions svg {
-	width: 16px;
-	height: 16px;
 }
 
 [data-find-count] {
@@ -713,35 +585,9 @@ html {
 	flex-wrap: wrap;
 }
 
-.reader-tools.app-settings {
-	justify-content: flex-end;
-	flex-wrap: wrap;
-	gap: 10px;
-	margin: 0 0 0 auto;
-	max-width: 100%;
-}
-
-.reader-tools .application-find {
-	flex: 1 1 140px;
-	max-width: 240px;
-}
-
 .reader-tools .app-setting-stepper {
 	display: flex;
 	gap: 2px;
-}
-
-.reader-tools .application-find-actions {
-	z-index: 2;
-}
-
-.reader-source-line {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	flex-wrap: wrap;
-	gap: 4px 16px;
-	margin-top: 8px;
 }
 
 .reader-source-attribution {
@@ -761,10 +607,6 @@ html {
 	min-width: 0;
 }
 
-.reader-passage-navigation .work-header-greek {
-	margin: 0;
-}
-
 .reader-toolbar-line h1 {
 	font: 500 16px/1.3 var(--ui-font);
 	margin: 0;
@@ -773,8 +615,7 @@ html {
 }
 
 .shell .reader-toolbar select,
-.shell .reader-toolbar input,
-.shell .reader-toolbar .reader-find-nav {
+.shell .reader-toolbar input {
 	background: transparent;
 	border: 0;
 	border-radius: 0;
@@ -803,44 +644,6 @@ html {
 .reader-toolbar select option {
 	background: var(--dream-raised);
 	color: var(--app-text);
-}
-
-.shell .reader-locator-control {
-	display: grid;
-	grid-template-columns: 24px 48px 24px;
-	gap: 3px;
-	flex-shrink: 0;
-}
-
-.shell .reader-locator-control input {
-	box-sizing: border-box;
-	width: 48px;
-	min-width: 48px;
-	flex: 0 0 48px;
-	text-align: center;
-	padding: 0 2px;
-}
-
-.shell .reader-find-nav {
-	width: 24px;
-	height: 24px;
-}
-
-.reader-find-nav svg {
-	width: 16px;
-	height: 16px;
-}
-
-.reader-toolbar-line > .action-menu {
-	margin-left: auto;
-}
-
-.reader-toolbar .work-header-greek {
-	font-family: var(--reading-font);
-	font-size: 15px;
-	line-height: 1.5;
-	color: var(--muted-text);
-	margin: 4px 0 0;
 }
 
 .shell .text-body {

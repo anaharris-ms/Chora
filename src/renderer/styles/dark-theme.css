@@ -39,7 +39,6 @@
 :root[data-theme="dark"] .right-panel,
 :root[data-theme="dark"] .dream-catalogue,
 :root[data-theme="dark"] .dream-panel,
-:root[data-theme="dark"] .dream-header,
 :root[data-theme="dark"] .chat-panel,
 :root[data-theme="dark"] .idea-panel,
 :root[data-theme="dark"] .catalogue-group h4,
@@ -59,8 +58,6 @@
 :root[data-theme="dark"] .reader-control,
 :root[data-theme="dark"] .reader-control select,
 :root[data-theme="dark"] .text-body,
-:root[data-theme="dark"] .work-header h1,
-:root[data-theme="dark"] .dream-header h2,
 :root[data-theme="dark"] .dream-panel,
 :root[data-theme="dark"] .signal-heading,
 :root[data-theme="dark"] .chat-header h2 {
@@ -92,14 +89,10 @@
 
 :root[data-theme="dark"] .signal-list,
 :root[data-theme="dark"] .signal-item,
-:root[data-theme="dark"] .dream-header,
-:root[data-theme="dark"] .catalogue-header,
 :root[data-theme="dark"] .chat-header {
 	border-color: var(--panel-border);
 }
 
-:root[data-theme="dark"] .catalogue-header h3,
-:root[data-theme="dark"] .left-tab-panel .catalogue-header h3,
 :root[data-theme="dark"] .catalogue-item strong {
 	color: var(--app-text);
 }
@@ -142,10 +135,6 @@
 :root[data-theme="dark"] .catalogue-group h4 {
 	color: #ffffff;
 	font-weight: 700;
-}
-
-:root[data-theme="dark"] .signal-description {
-	color: #ffffff;
 }
 
 :root[data-theme="dark"] .signal-row {
