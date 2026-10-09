@@ -9,12 +9,6 @@
 	min-width: 0;
 }
 
-.signal-chat-button {
-	flex: 0 0 28px;
-	width: 28px;
-	height: 28px;
-}
-
 .chat-signal-focus {
 	flex-shrink: 0;
 	max-height: 5rem;
@@ -58,24 +52,6 @@
 .dream-action-link svg {
 	width: 14px;
 	height: 14px;
-}
-
-.dream-editor .resonance-section-heading > .resonance-add-button {
-	margin-left: 0;
-	visibility: visible;
-}
-
-.dream-editor .resonance-item-actions {
-	opacity: 0;
-}
-
-.dream-editor .resonance-item:hover .resonance-item-actions,
-.dream-editor .resonance-item:focus-within .resonance-item-actions {
-	opacity: 1;
-}
-
-.dream-editor .resonance-item:has(.resonance-armed-hint) .resonance-item-actions {
-	opacity: 1;
 }
 
 .dream-editor .markdown-toolbar button[data-markdown-command="unlink"],
@@ -236,10 +212,6 @@
 	color: inherit;
 }
 
-.dream-editor .signal-chat-button {
-	display: none;
-}
-
 .dream-editor .signal-heading {
 	top: 0;
 	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
@@ -247,10 +219,6 @@
 	font-weight: 400;
 	line-height: 1.7;
 	color: inherit;
-}
-
-.dream-editor .selected .signal-chat-button {
-	color: var(--app-text);
 }
 
 .dream-editor .signal-detail,
@@ -322,99 +290,6 @@
 
 .dream-editor .markdown-content:focus-within {
 	box-shadow: none;
-}
-
-.dream-editor .resonance-section {
-	padding: 16px 0 0;
-	border-top: 1px solid var(--panel-border);
-}
-
-.dream-editor .resonance-section-heading {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	margin-bottom: 8px;
-	font-family: var(--ui-font);
-	font-size: 13px;
-	font-weight: 600;
-	letter-spacing: 0;
-	text-transform: none;
-	color: var(--app-text);
-	cursor: pointer;
-}
-
-.dream-editor .resonance-section-heading::marker {
-	content: "";
-}
-
-.dream-editor .resonance-heading-icon {
-	display: flex;
-	flex: 0 0 16px;
-}
-
-.dream-editor .resonance-heading-icon svg {
-	width: 16px;
-	height: 16px;
-}
-
-.dream-editor .resonance-add-button {
-	flex: 0 0 24px;
-	width: 24px;
-	height: 24px;
-	color: var(--accent);
-	border-radius: 0;
-}
-
-.dream-editor .resonance-list {
-	gap: 0;
-	padding-left: 0;
-}
-
-.dream-editor .resonance-item {
-	padding: 3px 0;
-	border-bottom: 0;
-	border-radius: 0;
-	background: transparent;
-}
-
-.dream-editor .resonance-item + .resonance-item {
-	border-top: 1px solid color-mix(in srgb, var(--muted-text) 40%, transparent);
-}
-
-.dream-editor .resonance-note,
-.dream-editor .resonance-input {
-	color: var(--app-text);
-	font-size: var(--reading-font-size);
-	line-height: 1.5;
-}
-
-.dream-editor .resonance-bullet {
-	display: flex;
-	align-items: center;
-	align-self: flex-start;
-	flex: 0 0 12px;
-	height: calc(var(--reading-font-size) * 1.5);
-	color: var(--muted-text);
-	pointer-events: none;
-}
-
-.dream-editor .resonance-bullet svg {
-	width: 12px;
-	height: 12px;
-}
-
-.dream-editor .resonance-item [data-resonance-delete] {
-	opacity: 0;
-}
-
-.dream-editor .resonance-item:hover [data-resonance-delete],
-.dream-editor .resonance-item:focus-within [data-resonance-delete] {
-	opacity: 1;
-}
-
-.dream-editor .resonance-armed-hint {
-	flex-wrap: wrap;
-	white-space: normal;
 }
 
 .dream-tabs-host .dream-exegesis-tab {

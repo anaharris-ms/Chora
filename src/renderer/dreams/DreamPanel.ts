@@ -6,7 +6,7 @@ import { DreamStore, type DreamSaveState } from "./DreamStore.js";
 import { LibraryStore } from "../library/LibraryStore.js";
 import { EscapeHtml } from "../ui/Html.js";
 import { PopupPanel } from "../ui/PopupPanel.js";
-import { CloseIcon, SaveIcon, TrashIcon, MoreIcon, EditIcon, AddIcon, SearchIcon, OpenIcon, PreviousIcon, DocumentIcon } from "../ui/Icons.js";
+import { CloseIcon, EditIcon, AddIcon, SearchIcon, OpenIcon } from "../ui/Icons.js";
 import { TabControl } from "../ui/TabControl.js";
 import { DreamSignalsPanel } from "./DreamSignalsPanel.js";
 import { DreamExegesisPanel } from "./DreamExegesisPanel.js";
@@ -33,8 +33,6 @@ export class DreamPanel
 	private exegesisPanel: DreamExegesisPanel | null = null;
 	// Identity of the Dream currently mounted in the editor.
 	private mountedDreamId: string | null = null;
-	// Whether the active Dream was opened as a temporary preview from an Idea.
-	private canReturnToIdea = false;
 	// Popup containing the explicit Dream rename workflow.
 	private readonly manageSignalsPopup: PopupPanel | null;
 	// Handles rename form submission for the popup lifetime.
@@ -92,14 +90,6 @@ export class DreamPanel
 		this.tabs?.Dispose();
 	}
 
-	// Shows or hides contextual navigation back to the active Idea.
-	public SetIdeaReturnAvailable(isAvailable: boolean): void
-	{
-		this.canReturnToIdea = isAvailable;
-		const button = this.root.querySelector<HTMLElement>("[data-return-to-idea]");
-		button?.toggleAttribute("hidden", !isAvailable);
-	}
-
 	// Re-renders the active view (catalogue or editor) and its status line.
 	private Update(): void
 	{
@@ -141,7 +131,6 @@ export class DreamPanel
 			const meta = this.root.querySelector<HTMLElement>("[data-dream-source-meta]");
 			if (meta !== null) meta.textContent = `${dream.dialogue ?? dream.workId} · ${this.FormatSourceRange(dream)}`;
 		}
-		this.RefreshDreamTabs();
 		this.UpdateStatus();
 		this.RefreshManageSignalsPopup();
 	}
@@ -255,43 +244,10 @@ export class DreamPanel
 	// Creates the persistent editor shell for a newly opened Dream.
 	private RenderEditor(dream: Dream): string
 	{
-		const tabs = this.RenderDreamTabs(dream.id);
 		const source = this.RenderDreamSource(dream);
-		const editor = `<div class="dream-editor-stack">${tabs}<section class="dream-panel dream-editor">${source}<div class="dream-tabs-host" data-dream-tabs></div></section></div>`;
+		const editor = `<div class="dream-editor-stack"><section class="dream-panel dream-editor">${source}<div class="dream-tabs-host" data-dream-tabs></div></section></div>`;
 
 		return editor;
-	}
-
-	// Renders the ordered open-Dream tab strip.
-	private RenderDreamTabs(activeDreamId: string): string
-	{
-		let items = "";
-		for (const tab of this.controller.GetOpenTabs())
-		{
-			const selected = tab.dreamId === activeDreamId;
-			const dirty = tab.isDirty ? `<span class="dream-document-tab-dirty" aria-label="Unsaved changes"></span>` : "";
-			items += `<div class="dream-document-tab${selected ? " selected" : ""}" role="presentation"><button class="dream-document-tab-label button-control" data-dream-tab="${EscapeHtml(tab.dreamId)}" type="button" role="tab" aria-selected="${selected}" title="${EscapeHtml(tab.title)}"><span class="dream-document-tab-icon" aria-hidden="true">${DocumentIcon}</span><span>${EscapeHtml(tab.title)}</span></button>${dirty}<button class="dream-document-tab-close button-control" data-close-dream-tab="${EscapeHtml(tab.dreamId)}" type="button" title="Close ${EscapeHtml(tab.title)}" aria-label="Close ${EscapeHtml(tab.title)}">${CloseIcon}</button></div>`;
-		}
-		const strip = `<div class="dream-document-bar"><div class="dream-document-tabs" role="tablist" aria-label="Open Dreams">${items}</div><div class="dream-document-actions">${this.RenderDreamActions()}</div></div>`;
-
-		return strip;
-	}
-
-	// Reconciles tab titles, dirty state, and selection without rebuilding the editor.
-	private RefreshDreamTabs(): void
-	{
-		const activeDreamId = this.store.GetActiveDream()?.id;
-		const strip = this.root.querySelector<HTMLElement>(".dream-document-bar");
-		if (activeDreamId !== null && activeDreamId !== undefined && strip !== null)
-		{
-			const container = document.createElement("div");
-			container.innerHTML = this.RenderDreamTabs(activeDreamId);
-			const replacement = container.firstElementChild;
-			const actions = strip.querySelector(".dream-document-actions");
-			const replacementActions = replacement?.querySelector(".dream-document-actions");
-			if (actions !== null && replacementActions !== null && replacementActions !== undefined) replacementActions.replaceWith(actions);
-			if (replacement !== null) strip.replaceWith(replacement);
-		}
 	}
 
 	// Persists inner editor-tab selection for the active Dream session.
@@ -311,14 +267,6 @@ export class DreamPanel
 		return source;
 	}
 
-	// Renders Dream-level status and actions at the far edge of the document-tab strip.
-	private RenderDreamActions(): string
-	{
-		const buttons = `<button data-save-dream type="button">${SaveIcon}Save</button><button data-close-dream type="button">${CloseIcon}Close</button><button data-delete-dream type="button">${TrashIcon}Delete</button><button data-copy-dream-markdown type="button">Copy as Markdown</button>`;
-		const returnHidden = this.canReturnToIdea ? "" : " hidden";
-		const actions = `<button class="dream-icon-button button-control" data-return-to-idea type="button" title="Back to Idea" aria-label="Back to Idea"${returnHidden}>${PreviousIcon}</button><span class="dream-toolbar-status" data-dream-status role="status" aria-live="polite"></span><details class="action-menu"><summary title="Dream actions" aria-label="Dream actions">${MoreIcon}</summary><div class="action-menu-items">${buttons}</div></details>`;
-		return actions;
-	}
 
 	// Displays distinct source endpoints without repeating a single passage label.
 	private FormatSourceRange(dream: Dream): string
@@ -422,8 +370,6 @@ export class DreamPanel
 		const target = event.target as HTMLElement | null;
 		const dreamId = target?.closest<HTMLElement>("[data-dream-id]")?.dataset.dreamId;
 		const renameDreamId = target?.closest<HTMLElement>("[data-rename-dream]")?.dataset.renameDream;
-		const tabId = target?.closest<HTMLElement>("[data-dream-tab]")?.dataset.dreamTab;
-		const closeTabId = target?.closest<HTMLElement>("[data-close-dream-tab]")?.dataset.closeDreamTab;
 		const actionMenu = target?.closest<HTMLDetailsElement>(".action-menu");
 		if (actionMenu !== null && actionMenu !== undefined && target?.closest("button") !== null) actionMenu.open = false;
 		const book = target?.closest<HTMLElement>("[data-book-toggle]")?.dataset.bookToggle;
@@ -446,17 +392,7 @@ export class DreamPanel
 				window.setTimeout(this.OpenManageSignalsPopup.bind(this), 0);
 			}
 		}
-		else if (closeTabId !== undefined)
-		{
-			const closing = this.controller.CloseTabAsync(closeTabId);
-			void closing;
-		}
-		else if (tabId !== undefined)
-		{
-			this.controller.ActivateTab(tabId);
-		}
 		else if (dreamId !== undefined) this.controller.Open(dreamId);
-		if (target?.closest("[data-return-to-idea]") !== null) void this.events.PublishAsync("idea.return-requested", {});
 		if (textToggle !== null && textToggle !== undefined)
 		{
 			this.isTextRootCollapsed = !this.isTextRootCollapsed;
@@ -650,7 +586,6 @@ export class DreamPanel
 		}
 		else
 		{
-			this.RefreshDreamTabs();
 			this.UpdateStatus();
 		}
 	}
@@ -681,7 +616,6 @@ export class DreamPanel
 	// Refreshes the status line after the active Dream's dirty or save state changes.
 	private HandleDreamStatusChanged(): void
 	{
-		this.RefreshDreamTabs();
 		this.UpdateStatus();
 	}
 

@@ -190,28 +190,6 @@ select {
 	background: var(--side-panel-background);
 }
 
-.activity-button {
-	display: grid;
-	place-items: center;
-	width: 2rem;
-	height: 2rem;
-	padding: 0;
-	border: 1px solid transparent;
-	border-radius: 0.35rem;
-	background: transparent;
-	color: var(--muted-text);
-	font-family: "Segoe UI Symbol", "Segoe UI", sans-serif;
-	font-size: 1rem;
-	cursor: pointer;
-}
-
-.activity-button:hover,
-.activity-button.selected {
-	border-color: var(--panel-border);
-	background: var(--accent-soft);
-	color: var(--accent);
-}
-
 .left-view {
 	display: flex;
 	flex: 1;
@@ -859,9 +837,14 @@ mark.find-hit.active {
 
 [data-dream-panel],
 [data-idea-editor-panel] {
-	height: 100%;
+	flex: 1;
 	min-height: 0;
 	overflow: hidden;
+}
+
+[data-workspace-tabs] {
+	flex: 0 0 auto;
+	min-width: 0;
 }
 
 [data-editor-empty][hidden],

@@ -78,6 +78,12 @@ export class PopupPanel
 		this.body.addEventListener("click", handler);
 	}
 
+	// Registers delegated input handling within the popup body.
+	public OnBodyInput(handler: (event: Event) => void): void
+	{
+		this.body.addEventListener("input", handler);
+	}
+
 	// Registers delegated form submission handling within the popup body.
 	public OnBodySubmit(handler: (event: Event) => void): void
 	{

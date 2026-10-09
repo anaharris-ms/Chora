@@ -75,7 +75,7 @@ describe("Dream library", function DreamLibraryTests()
 	it("round trips Greek polytonic text without changing code points", () =>
 	{
 		const dream = CreateDream("greek", "Πρόσοψις");
-		dream.signals.push({ id: "signal", sourceRef: "s1", selection: dream.source, text: "χθὲς", description: "ἅμα — a simultaneous movement.", resonances: [] });
+		dream.signals.push({ id: "signal", sourceRef: "s1", selection: dream.source, text: "χθὲς", description: "ἅμα — a simultaneous movement." });
 		const parsed = ParseDreamMarkdown(SerializeDreamMarkdown(dream));
 
 		expect(parsed).toEqual(dream);
@@ -199,7 +199,6 @@ describe("Dream library", function DreamLibraryTests()
 			selection: record.source,
 			text: "χθὲς",
 			description: "",
-			resonances: []
 		};
 
 		record.signals = [signal, signal];

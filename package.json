@@ -7,7 +7,7 @@
 	"scripts": {
 		"postinstall": "node scripts/FixMilkdownDeclarations.mjs",
 		"start": "npm run dev:mock",
-		"start:app": "npm run build && electron-forge start",
+		"start:app": "npm run build && electron .",
 		"dev:mock": "node scripts/StartMode.mjs mock",
 		"dev:kimi": "node scripts/StartMode.mjs kimi",
 		"dev:relay": "node scripts/StartMode.mjs copilot-relay",

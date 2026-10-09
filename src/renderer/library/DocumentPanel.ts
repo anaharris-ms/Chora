@@ -111,18 +111,6 @@ export class DocumentPanel
 	// Renders the compact text, passage, search, and reading-settings toolbar.
 	private RenderReaderToolbar(document: LibraryText): string
 	{
-		const works = this.library.GetSnapshot().texts;
-		const workOptions = works.map(function RenderWorkOption(work): string
-		{
-			const selected = work.id === document.id;
-			const workTitle = work.titleGreek || work.title;
-			const option = `<option value="${EscapeHtml(work.id)}"${selected ? " selected" : ""}>${EscapeHtml(workTitle)}</option>`;
-			return option;
-		}).join("");
-		const hasCurrentWork = works.some(function IsCurrentWork(work): boolean { return work.id === document.id; });
-		const currentTitle = document.titleGreek || document.title;
-		const externalOption = hasCurrentWork ? "" : `<option value="${EscapeHtml(document.id)}" selected>${EscapeHtml(currentTitle)}</option>`;
-		const title = `<h1><select class="reader-work-select" data-reader-work aria-label="Choose text" title="Choose text">${externalOption}${workOptions}</select></h1>`;
 		const books = document.segments.map((segment) => segment.division).filter((division, index, divisions) => division?.kind === "book" && divisions.findIndex((candidate) => candidate?.kind === "book" && candidate.value === division.value) === index);
 		const bookControl = books.length === 0 ? "" : `<label class="reader-control reader-book-control"><select data-book-navigation aria-label="Go to book">${books.map((book) => `<option value="${EscapeHtml(book?.value ?? "")}">Book ${EscapeHtml(this.FormatBookNumber(book?.value ?? ""))}</option>`).join("")}</select></label>`;
 		const locators = this.CollectLocators(document);
@@ -134,7 +122,7 @@ export class DocumentPanel
 		const passageControl = bookControl.length === 0 && locatorControl.length === 0 ? "" : `<div class="reader-passage-control"><button class="reader-icon-button button-control" data-passage-step="-1" type="button" title="Previous passage" aria-label="Previous passage">${PreviousIcon}</button>${bookControl}${bookControl.length > 0 && locatorControl.length > 0 ? `<span class="reader-passage-divider" aria-hidden="true"></span>` : ""}${locatorControl}<button class="reader-icon-button button-control" data-passage-step="1" type="button" title="Next passage" aria-label="Next passage">${NextIcon}</button></div>`;
 		const search = `<details class="action-menu reader-search-menu"><summary data-find-toggle title="Find in text" aria-label="Find in text">${SearchIcon}</summary><div class="action-menu-items reader-search-popover"><div class="application-find"><input data-find-input type="search" placeholder="Find in text..." aria-label="Find in text"><span data-find-count aria-live="polite"></span><button data-find-prev type="button" title="Previous match" aria-label="Previous match">${PreviousIcon}</button><button data-find-next type="button" title="Next match" aria-label="Next match">${NextIcon}</button><button data-find-close type="button" title="Close search" aria-label="Close search">${CloseIcon}</button></div></div></details>`;
 		const settings = `<details class="action-menu reader-settings-menu"><summary title="Reading settings" aria-label="Reading settings">${SettingsIcon}</summary><div class="action-menu-items reader-settings-popover"><label class="reader-setting-row"><span>Font</span><select data-reading-font aria-label="Reading font"><option value="serif"${font === "serif" ? " selected" : ""}>Serif</option><option value="sans"${font === "sans" ? " selected" : ""}>Sans</option></select></label><div class="reader-setting-row"><span>Text size</span><div class="app-setting-stepper"><button data-font-size="-1" type="button" title="Decrease text size" aria-label="Decrease text size">A&minus;</button><output data-font-size-value>${this.settings.GetFontSize()}</output><button data-font-size="1" type="button" title="Increase text size" aria-label="Increase text size">A+</button></div></div><button class="reader-setting-row reader-theme-toggle" data-toggle-appearance type="button" title="${appearanceLabel}" aria-label="${appearanceLabel}"><span>Theme</span><span data-appearance-value>${isLight ? "Light" : "Dark"}</span></button></div></details>`;
-		const toolbar = `<header class="reader-toolbar"><div class="reader-toolbar-line"><div class="reader-passage-navigation">${title}${passageControl}</div><div class="reader-tools">${search}${settings}</div></div></header>`;
+		const toolbar = `<header class="reader-toolbar"><div class="reader-toolbar-line"><div class="reader-passage-navigation">${passageControl}</div><div class="reader-tools">${search}${settings}</div></div></header>`;
 		return toolbar;
 	}
 
@@ -170,13 +158,6 @@ export class DocumentPanel
 	private HandleChange(event: Event): void
 	{
 		const target = event.target;
-		if (target instanceof HTMLSelectElement && target.matches("[data-reader-work]"))
-		{
-			const workId = target.value;
-			const currentId = this.library.GetText()?.id ?? "";
-			target.value = currentId;
-			if (workId !== currentId) void this.controller.OpenAsync(workId);
-		}
 		const bookNavigation = target instanceof HTMLSelectElement && target.matches("[data-book-navigation]") ? target : null;
 		if (bookNavigation !== null) this.JumpToBook(bookNavigation.value);
 		if (target instanceof HTMLSelectElement && target.matches("[data-locator-navigation]") && target.value.length > 0)

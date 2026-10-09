@@ -1,4 +1,4 @@
-import { createElement, Ellipsis, Pencil, Plus, Search, Settings, ArrowUpRight, ChevronLeft, ChevronRight, FileText } from "lucide";
+import { createElement, Ellipsis, Pencil, Plus, Search, Settings, ArrowUpRight, ChevronLeft, ChevronRight, FileText, Lightbulb } from "lucide";
 
 export const MoreIcon = createElement(Ellipsis).outerHTML;
 export const EditIcon = createElement(Pencil).outerHTML;
@@ -9,6 +9,7 @@ export const OpenIcon = createElement(ArrowUpRight).outerHTML;
 export const PreviousIcon = createElement(ChevronLeft).outerHTML;
 export const NextIcon = createElement(ChevronRight).outerHTML;
 export const DocumentIcon = createElement(FileText).outerHTML;
+export const IdeaIcon = createElement(Lightbulb).outerHTML;
 
 // Shared inline SVG icon markup, reused across panels so button glyphs stay consistent.
 

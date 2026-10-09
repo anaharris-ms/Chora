@@ -8,9 +8,11 @@ export interface ChoraEvents
 	"library.text-opened": Record<string, never>;
 	"library.text-open-requested": { textId: string };
 	"library.focus-changed": { textId: string; segmentKey: string };
+	"library.selection-changed": Record<string, never>;
 	"library.jump-requested": { selection: TextSelection };
 	// Requests focus on the Dreams Explorer without opening a Dream.
 	"workspace.dreams-focus-requested": Record<string, never>;
+	"workspace.document-selected": { kind: "dream" | "idea" | null };
 	// Requests selection of a durable Idea for one existing Signal.
 	"idea.add-signal-requested": { dreamId: string; signalId: string };
 	// Requests that an Idea-referenced Signal open in the established Dream editor.
@@ -19,17 +21,15 @@ export interface ChoraEvents
 	"idea.return-requested": Record<string, never>;
 	// Announces a change to renderer-owned Idea state.
 	"ideas.changed": Record<string, never>;
+	// Announces draft text changes without forcing the editor to rebuild while typing.
+	"idea.draft-changed": Record<string, never>;
 	"dream.create-requested": { selection: TextSelection };
 	"dream.signal-add-requested": { selection: TextSelection };
 	"dream.source-extend-requested": { selection: TextSelection };
 	"dream.signal-added": { dreamId: string; signalId: string };
 	"dream.opened": Record<string, never>;
-	// Requests that a specific signal (and, once mounted, its resonances) be revealed within the active Dream.
+	// Requests that a specific signal be revealed within the active Dream.
 	"dream.signal-focus-requested": { dreamId: string; signalId: string };
-	// Reports a passage selection chosen to attach to the currently armed resonance.
-	"dream.resonance-target-attach-requested": { selection: TextSelection };
-	// Announces a change to which resonance, if any, is armed to receive an attached passage.
-	"dream.resonance-attach-armed-changed": Record<string, never>;
 	"dream.catalogue-changed": { count: number };
 	// Requests Dreams anchored to a displayed passage without navigating the text.
 	"dream.passage-filter-requested": { workId: string; segmentKey: string };

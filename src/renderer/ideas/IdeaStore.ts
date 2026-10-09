@@ -1,4 +1,5 @@
 import type { IdeaDiscoverySuggestion, IdeaRecord, IdeaSignalReference } from "../../shared/ideas/IdeaTypes.js";
+import type { SessionStore } from "../core/session/SessionStore.js";
 
 // Identifies the visible Ideas editor surface.
 export type IdeaView = "editor" | "signals" | "suggestions";
@@ -23,9 +24,23 @@ export interface IdeaDraft
 	readonly relatedSignals: readonly IdeaSignalReference[];
 }
 
+export interface IdeaTab
+{
+	readonly key: string;
+	readonly ideaId: string | null;
+	readonly title: string;
+}
+
+interface IdeaTabsSnapshot
+{
+	readonly tabs: readonly IdeaDraft[];
+	readonly activeKey: string | null;
+}
+
 // Owns all renderer-side Idea state and returns immutable snapshots.
 export class IdeaStore
 {
+	private static readonly SessionKey = "chora:idea-tabs";
 	// Identifies the active work.
 	private workId: string | null = null;
 	// Contains durable Ideas returned by the main process.
@@ -46,6 +61,26 @@ export class IdeaStore
 	private pendingAddReference: IdeaSignalReference | null = null;
 	// Contains the current Idea workflow error shown by the editor.
 	private error: string | null = null;
+	// Ordered Idea drafts represented by the shared document-tab strip.
+	private openTabs: IdeaDraft[] = [];
+	// Stable key of the active Idea tab; unsaved Ideas use "new".
+	private activeTabKey: string | null = null;
+
+	public constructor(private readonly sessions: SessionStore | null = null)
+	{
+		const snapshot = this.sessions?.Load<IdeaTabsSnapshot>(IdeaStore.SessionKey) ?? null;
+		if (snapshot !== null)
+		{
+			this.openTabs = Array.from(snapshot.tabs, (draft) => structuredClone(draft));
+			this.activeTabKey = snapshot.activeKey;
+			const active = this.openTabs.find((tab) => this.GetDraftKey(tab) === this.activeTabKey) ?? this.openTabs[0] ?? null;
+			if (active !== null)
+			{
+				this.draft = structuredClone(active);
+				this.activeTabKey = this.GetDraftKey(active);
+			}
+		}
+	}
 
 	// Replaces all feature state for the active work.
 	public SetWork(workId: string, ideas: readonly IdeaRecord[]): void
@@ -62,9 +97,62 @@ export class IdeaStore
 			this.signalSearch = "";
 			this.suggestions = [];
 			this.discoveryState = "idle";
-			this.draft = null;
 			this.view = "editor";
+			this.openTabs = this.openTabs.filter((tab) => tab.workId === workId);
+			const active = this.openTabs.find((tab) => this.GetDraftKey(tab) === this.activeTabKey) ?? this.openTabs[0] ?? null;
+			this.draft = active === null ? null : structuredClone(active);
+			this.activeTabKey = active === null ? null : this.GetDraftKey(active);
+			this.PersistTabs();
 		}
+	}
+
+	public GetOpenTabs(): readonly IdeaTab[]
+	{
+		this.CaptureActiveTab();
+		return this.openTabs.map((draft) => ({
+			key: this.GetDraftKey(draft),
+			ideaId: draft.ideaId,
+			title: draft.title || "New Idea"
+		}));
+	}
+
+	public HasOpenTab(key: string): boolean
+	{
+		return this.openTabs.some((draft) => this.GetDraftKey(draft) === key);
+	}
+
+	public ActivateTab(key: string): IdeaDraft | null
+	{
+		this.CaptureActiveTab();
+		const draft = this.openTabs.find((candidate) => this.GetDraftKey(candidate) === key) ?? null;
+		if (draft !== null)
+		{
+			this.draft = structuredClone(draft);
+			this.activeTabKey = key;
+			this.view = "editor";
+			this.error = null;
+			this.PersistTabs();
+		}
+		return structuredClone(draft);
+	}
+
+	public CloseTab(key: string): IdeaDraft | null
+	{
+		this.CaptureActiveTab();
+		const index = this.openTabs.findIndex((draft) => this.GetDraftKey(draft) === key);
+		if (index >= 0)
+		{
+			this.openTabs.splice(index, 1);
+			if (this.activeTabKey === key)
+			{
+				const next = this.openTabs[Math.min(index, this.openTabs.length - 1)] ?? null;
+				this.draft = next === null ? null : structuredClone(next);
+				this.activeTabKey = next === null ? null : this.GetDraftKey(next);
+				this.view = "editor";
+			}
+			this.PersistTabs();
+		}
+		return this.GetDraft();
 	}
 
 	// Returns the active work identity.
@@ -191,7 +279,28 @@ export class IdeaStore
 	// Replaces the active draft and reveals the editor surface.
 	public SetDraft(draft: IdeaDraft | null): void
 	{
-		this.draft = structuredClone(draft);
+		this.CaptureActiveTab();
+		if (draft === null)
+		{
+			if (this.activeTabKey !== null) this.CloseTab(this.activeTabKey);
+			else this.draft = null;
+		}
+		else
+		{
+			const next = structuredClone(draft);
+			const nextKey = this.GetDraftKey(next);
+			const activeIndex = this.openTabs.findIndex((candidate) => this.GetDraftKey(candidate) === this.activeTabKey);
+			const existingIndex = this.openTabs.findIndex((candidate) => this.GetDraftKey(candidate) === nextKey);
+			if (this.activeTabKey === "new" && nextKey !== "new" && activeIndex >= 0)
+			{
+				this.openTabs[activeIndex] = next;
+			}
+			else if (existingIndex >= 0) this.openTabs[existingIndex] = next;
+			else this.openTabs.push(next);
+			this.draft = next;
+			this.activeTabKey = nextKey;
+			this.PersistTabs();
+		}
 		this.pendingAddReference = null;
 		this.signalSearch = "";
 		this.suggestions = [];
@@ -266,6 +375,8 @@ export class IdeaStore
 				title,
 				content
 			};
+			this.CaptureActiveTab();
+			this.PersistTabs();
 		}
 	}
 
@@ -308,6 +419,8 @@ export class IdeaStore
 					relatedSignals
 				};
 			}
+			this.CaptureActiveTab();
+			this.PersistTabs();
 		}
 	}
 
@@ -368,9 +481,11 @@ export class IdeaStore
 		if (this.draft !== null && this.draft.ideaId === saved.id)
 		{
 			this.draft = this.CreateDraft(saved);
+			this.CaptureActiveTab();
 		}
 
 		this.error = null;
+		this.PersistTabs();
 	}
 
 	// Removes one durable Idea and its active draft.
@@ -390,8 +505,12 @@ export class IdeaStore
 
 		if (this.draft !== null && this.draft.ideaId === ideaId)
 		{
-			this.draft = null;
-			this.view = "editor";
+			this.CloseTab(ideaId);
+		}
+		else
+		{
+			this.openTabs = this.openTabs.filter((draft) => draft.ideaId !== ideaId);
+			this.PersistTabs();
 		}
 	}
 
@@ -422,5 +541,31 @@ export class IdeaStore
 		const identity = `signal:${reference.dreamId}:${reference.signalId}`;
 
 		return identity;
+	}
+
+	private GetDraftKey(draft: IdeaDraft): string
+	{
+		return draft.ideaId ?? "new";
+	}
+
+	private CaptureActiveTab(): void
+	{
+		if (this.draft !== null && this.activeTabKey !== null)
+		{
+			const index = this.openTabs.findIndex((candidate) => this.GetDraftKey(candidate) === this.activeTabKey);
+			if (index >= 0) this.openTabs[index] = structuredClone(this.draft);
+		}
+	}
+
+	private PersistTabs(): void
+	{
+		if (this.sessions !== null)
+		{
+			const snapshot: IdeaTabsSnapshot = {
+				tabs: structuredClone(this.openTabs),
+				activeKey: this.activeTabKey
+			};
+			this.sessions.Save(IdeaStore.SessionKey, snapshot);
+		}
 	}
 }

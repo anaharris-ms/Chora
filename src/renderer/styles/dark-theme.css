@@ -37,6 +37,7 @@
 
 :root[data-theme="dark"] .left-panel,
 :root[data-theme="dark"] .right-panel,
+:root[data-theme="dark"] .workspace-explorer,
 :root[data-theme="dark"] .dream-catalogue,
 :root[data-theme="dark"] .dream-panel,
 :root[data-theme="dark"] .chat-panel,
@@ -143,37 +144,6 @@
 
 :root[data-theme="dark"] .dream-action-link {
 	color: var(--dream-accent);
-}
-
-:root[data-theme="dark"] .resonance-item {
-	background: var(--dream-raised);
-}
-
-:root[data-theme="dark"] .resonance-note {
-	color: #ffffff;
-}
-
-:root[data-theme="dark"] .resonance-input {
-	border-color: var(--panel-border);
-	background: var(--dream-raised);
-	color: var(--app-text);
-}
-
-:root[data-theme="dark"] .resonance-target-chip {
-	background: var(--dream-selection);
-}
-
-:root[data-theme="dark"] .resonance-target-jump {
-	color: var(--dream-accent);
-}
-
-:root[data-theme="dark"] .resonance-target-remove,
-:root[data-theme="dark"] .resonance-review-signal {
-	color: var(--dream-muted);
-}
-
-:root[data-theme="dark"] .resonance-review-item {
-	border-color: var(--panel-border);
 }
 
 :root[data-theme="dark"] .chat-panel,

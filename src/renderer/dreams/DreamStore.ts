@@ -1,24 +1,7 @@
-import type { Dream, DreamSignal, DreamResonance, ResonanceTarget, SourceSelection } from "../../shared/dreams/DreamTypes.js";
+import type { Dream, DreamSignal, SourceSelection } from "../../shared/dreams/DreamTypes.js";
 import { SessionStore } from "../core/session/SessionStore.js";
 import type { LibraryText } from "../../shared/library/LibraryTypes.js";
 import type { TextSelection } from "../../shared/library/SelectionTypes.js";
-
-// A resonance anchored to a displayed passage, with enough context to return to its originating signal.
-export interface ResonanceHit
-{
-	readonly dreamId: string;
-	readonly dreamTitle: string;
-	readonly signalId: string;
-	readonly signalText: string;
-	readonly note: string;
-}
-
-// Signal and resonance currently armed to receive an attached passage.
-export interface ArmedResonanceAttach
-{
-	readonly signalId: string;
-	readonly resonanceId: string;
-}
 
 // Identifies the source passage restricting the Dream catalogue.
 export interface DreamPassageFilter
@@ -100,8 +83,6 @@ export class DreamStore
 	private searchText = "";
 	// Optional source-passage restriction, independent of keyword search.
 	private passageFilter: DreamPassageFilter | null = null;
-	// Signal and resonance currently armed to receive an attached passage, or null when none is armed.
-	private armedResonanceAttach: ArmedResonanceAttach | null = null;
 	// Returns a snapshot of the active source restriction.
 	public GetPassageFilter(): DreamPassageFilter | null
 	{
@@ -244,150 +225,6 @@ export class DreamStore
 		return counts;
 	}
 
-	// Counts resonance targets once per passage, across every reader Dream, for the given document.
-	public GetResonancePassageCounts(document: LibraryText): ReadonlyMap<string, number>
-	{
-		const hits = this.BuildResonancePassageCatalogue(document);
-		const counts = new Map<string, number>();
-		for (const [key, resonanceHits] of hits)
-		{
-			counts.set(key, resonanceHits.length);
-		}
-		return counts;
-	}
-
-	// Returns the resonance hits anchored to one displayed passage, or an empty list when none target it.
-	public GetResonanceHitsAt(document: LibraryText, segmentKey: string): readonly ResonanceHit[]
-	{
-		const hits = this.BuildResonancePassageCatalogue(document);
-		return hits.get(segmentKey) ?? [];
-	}
-
-	// Adds a resonance to one signal owned by the active Dream.
-	public AddResonance(signalId: string, resonance: DreamResonance): DreamChange | null
-	{
-		let change: DreamChange | null = null;
-		const signal = this.FindActiveSignal(signalId);
-
-		if (signal !== undefined)
-		{
-			signal.resonances.push(structuredClone(resonance));
-			change = this.RecordChange();
-		}
-
-		return change;
-	}
-
-	// Updates one resonance's note.
-	public UpdateResonanceNote(signalId: string, resonanceId: string, note: string): DreamChange | null
-	{
-		let change: DreamChange | null = null;
-		const resonance = this.FindActiveResonance(signalId, resonanceId);
-
-		if (resonance !== undefined)
-		{
-			resonance.note = note;
-			resonance.updatedAt = new Date().toISOString();
-			change = this.RecordChange();
-		}
-
-		return change;
-	}
-
-	// Removes one resonance from a signal owned by the active Dream.
-	public RemoveResonance(signalId: string, resonanceId: string): DreamChange | null
-	{
-		let change: DreamChange | null = null;
-		const signal = this.FindActiveSignal(signalId);
-
-		if (signal !== undefined)
-		{
-			const index = signal.resonances.findIndex((candidate) => candidate.id === resonanceId);
-			if (index >= 0)
-			{
-				signal.resonances.splice(index, 1);
-				change = this.RecordChange();
-			}
-		}
-
-		return change;
-	}
-
-	// Attaches a passage target to one resonance, ignoring an exact duplicate.
-	public AttachResonanceTarget(signalId: string, resonanceId: string, target: ResonanceTarget): DreamChange | null
-	{
-		let change: DreamChange | null = null;
-		const resonance = this.FindActiveResonance(signalId, resonanceId);
-
-		if (resonance !== undefined)
-		{
-			const hasTarget = resonance.targets.some((existing) => existing.id === target.id);
-			if (!hasTarget)
-			{
-				resonance.targets.push(structuredClone(target));
-				resonance.updatedAt = new Date().toISOString();
-				change = this.RecordChange();
-			}
-		}
-
-		return change;
-	}
-
-	// Removes one attached target from a resonance, retaining the resonance itself.
-	public RemoveResonanceTarget(signalId: string, resonanceId: string, targetId: string): DreamChange | null
-	{
-		let change: DreamChange | null = null;
-		const resonance = this.FindActiveResonance(signalId, resonanceId);
-
-		if (resonance !== undefined)
-		{
-			const index = resonance.targets.findIndex((target) => target.id === targetId);
-			if (index >= 0)
-			{
-				resonance.targets.splice(index, 1);
-				resonance.updatedAt = new Date().toISOString();
-				change = this.RecordChange();
-			}
-		}
-
-		return change;
-	}
-
-	// Arms one resonance to receive the reader's next attached passage selection.
-	public ArmResonanceAttach(signalId: string, resonanceId: string): void
-	{
-		this.armedResonanceAttach = { signalId, resonanceId };
-	}
-
-	// Returns the resonance currently armed to receive an attached passage, or null when none is armed.
-	public GetArmedResonanceAttach(): ArmedResonanceAttach | null
-	{
-		return this.armedResonanceAttach === null ? null : { ...this.armedResonanceAttach };
-	}
-
-	// Clears any armed resonance-attach request.
-	public ClearArmedResonanceAttach(): void
-	{
-		this.armedResonanceAttach = null;
-	}
-
-	// Finds a signal owned by the active Dream, or undefined when it is not present.
-	private FindActiveSignal(signalId: string): DreamSignal | undefined
-	{
-		const signal = this.activeDream?.signals.find((candidate) => candidate.id === signalId);
-
-		return signal;
-	}
-
-	// Finds a resonance owned by a signal of the active Dream, or undefined when it is not present.
-	private FindActiveResonance(signalId: string, resonanceId: string): DreamResonance | undefined
-	{
-		const signal = this.FindActiveSignal(signalId);
-		const resonance = signal?.resonances.find((candidate) => candidate.id === resonanceId);
-
-		return resonance;
-	}
-
 	// Resolves segment positions and passage-grouping keys once per document, shared by every passage-coverage query.
 	private BuildPassageIndex(document: LibraryText): { positions: Map<string, number>; passageKeys: string[] }
 	{
@@ -457,37 +294,6 @@ export class DreamStore
 			}
 		}
 		return passages;
-	}
-
-	// Resolves every resonance target in document order and groups its nonempty overlap by passage.
-	private BuildResonancePassageCatalogue(document: LibraryText): Map<string, ResonanceHit[]>
-	{
-		const { positions, passageKeys } = this.BuildPassageIndex(document);
-		const hits = new Map<string, ResonanceHit[]>();
-
-		for (const dream of this.catalogue)
-		{
-			for (const signal of dream.signals)
-			{
-				for (const resonance of signal.resonances)
-				{
-					for (const target of resonance.targets)
-					{
-						if (target.workId === document.id && target.selection.documentId === document.id)
-						{
-							const covered = this.ComputeCoveredPassageKeys(document, positions, passageKeys, target.selection.start, target.selection.end);
-							for (const key of covered)
-							{
-								const list = hits.get(key) ?? [];
-								list.push({ dreamId: dream.id, dreamTitle: dream.title, signalId: signal.id, signalText: signal.text, note: resonance.note });
-								hits.set(key, list);
-							}
-						}
-					}
-				}
-			}
-		}
-		return hits;
 	}
 
 	// Returns an immutable snapshot of the active Dream, or null when none is open.

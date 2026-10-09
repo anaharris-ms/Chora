@@ -28,7 +28,6 @@ function CreateSignal(id: string, text: string, description: string): DreamSigna
 		},
 		text,
 		description,
-		resonances: []
 	};
 
 	return signal;
@@ -185,7 +184,7 @@ describe("IdeaPanel", function IdeaPanelTests()
 		expect(root.querySelector("[data-find-signals]")?.getAttribute("aria-label")).toBe("Find Signals");
 		expect(root.querySelector("[data-find-signals] svg")).not.toBeNull();
 		expect(root.querySelectorAll(".idea-signals-section .signal-item")).toHaveLength(0);
-		expect(root.querySelector("[data-cancel-idea]")?.textContent).toBe("Cancel");
+		expect(root.querySelector("[data-cancel-idea]")?.textContent).toBe("Close");
 		expect(root.querySelector("[data-save-idea]")?.getAttribute("aria-label")).toBe("Save Idea");
 		expect(root.querySelector("[data-save-idea] svg")).not.toBeNull();
 		expect(root.querySelector<HTMLButtonElement>("[data-save-idea]")?.disabled).toBe(true);

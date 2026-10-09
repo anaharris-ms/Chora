@@ -95,6 +95,7 @@ export class LibraryController
 		if (!this.AreSelectionsEqual(previous, canonical))
 		{
 			this.store.SetSelection(canonical);
+			void this.events.PublishAsync("library.selection-changed", {});
 		}
 	}
 
@@ -118,7 +119,6 @@ export class LibraryController
 		if (action === "create-dream") await this.events.PublishAsync("dream.create-requested", { selection });
 		if (action === "add-to-dream") await this.events.PublishAsync("dream.source-extend-requested", { selection });
 		if (action === "add-dream-signal") await this.events.PublishAsync("dream.signal-add-requested", { selection });
-		if (action === "attach-resonance-target") await this.events.PublishAsync("dream.resonance-target-attach-requested", { selection });
 		if (action === "copy") await this.gateway.CopyAsync(selection.selectedText);
 		if (action === "lookup") await this.gateway.LookUpAsync(selection.selectedText);
 	}

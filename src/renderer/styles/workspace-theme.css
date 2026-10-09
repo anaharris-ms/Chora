@@ -44,45 +44,9 @@ body {
 	background: var(--side-panel-background);
 }
 
-.workspace-views {
-	display: flex;
-	flex: 0 0 auto;
-	flex-wrap: wrap;
-	gap: 4px;
-	padding: 6px 12px;
-	border-bottom: 1px solid var(--panel-border);
-}
-
-.workspace-views .activity-button {
-	width: auto;
-	height: 28px;
-	padding: 0 8px;
-	border-radius: 0;
-	font: 12px/1 var(--ui-font);
-	color: var(--muted-text);
-}
-
-.workspace-views .activity-button.selected {
-	background: transparent;
-	color: var(--app-text);
-	box-shadow: inset 0 -1px var(--accent);
-}
-
 .right-panel {
 	border-left-color: var(--panel-border);
 	background: var(--side-panel-background);
-}
-
-.activity-button {
-	border-radius: 0.42rem;
-	color: #6c6e75;
-}
-
-.activity-button:hover,
-.activity-button.selected {
-	border-color: transparent;
-	background: #e3e9f1;
-	color: #1769b0;
 }
 
 .center-panel {
@@ -231,22 +195,6 @@ body {
 	color: #303238;
 	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 	font-size: 1rem;
-}
-
-.resonance-item {
-	background: #f5f6f8;
-}
-
-.resonance-section-heading {
-	color: #989ba3;
-}
-
-.resonance-note {
-	color: #303238;
-}
-
-.resonance-review-item {
-	border-color: #e8e8ea;
 }
 
 .dream-field input,
@@ -607,13 +555,6 @@ html {
 	min-width: 0;
 }
 
-.reader-toolbar-line h1 {
-	font: 500 16px/1.3 var(--ui-font);
-	margin: 0;
-	padding-right: 18px;
-	border-right: 1px solid var(--panel-border);
-}
-
 .shell .reader-toolbar select,
 .shell .reader-toolbar input {
 	background: transparent;
@@ -626,19 +567,6 @@ html {
 .shell .reader-toolbar select {
 	padding: 0;
 	max-width: 90px;
-}
-
-.shell .reader-toolbar .reader-work-select {
-	max-width: min(220px, 100%);
-	font: inherit;
-	font-family: var(--reading-font);
-	font-size: var(--reading-font-size);
-	cursor: pointer;
-}
-
-.reader-toolbar-line h1 {
-	min-width: 0;
-	max-width: 100%;
 }
 
 .reader-toolbar select option {
@@ -783,21 +711,6 @@ html {
 	justify-content: space-between;
 	flex-wrap: nowrap;
 	gap: 12px;
-}
-
-.reader-toolbar-line h1 {
-	flex: 0 1 180px;
-	min-width: 54px;
-	overflow: hidden;
-	padding-right: 0;
-	border-right: 0;
-}
-
-.shell .reader-toolbar .reader-work-select {
-	width: 100%;
-	max-width: 100%;
-	font-size: 16px;
-	text-overflow: ellipsis;
 }
 
 .reader-passage-control {

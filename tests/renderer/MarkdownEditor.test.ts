@@ -49,13 +49,13 @@ afterEach(async function CleanupAsync()
 
 describe("MarkdownEditor", function MarkdownEditorTests()
 {
-	it("serializes a complete Signal with resonances and attached passages", function SerializesSignalMarkdown()
+	it("serializes a complete Signal", function SerializesSignalMarkdown()
 	{
 		const selection = { documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 7 }, selectedText: "κατέβην", locatorStart: null, locatorEnd: null };
 		const dream: Dream = {
 			id: "dream", workId: "republic", dialogue: "Republic", title: "Descent",
 			source: { ...selection, sourceRefs: ["s1"], startSourceRef: "s1", endSourceRef: "s1" },
-			signals: [{ id: "signal", sourceRef: "s1", text: "κατέβην", selection, description: "An observation", resonances: [{ id: "resonance", note: "A connection", targets: [{ id: "target", workId: "republic", selection }], candidates: [], createdAt: "2026-01-01", updatedAt: "2026-01-01" }] }],
+			signals: [{ id: "signal", sourceRef: "s1", text: "κατέβην", selection, description: "An observation" }],
 			reflection: "A reflection", linkedDreamIds: ["another"], createdAt: "2026-01-01", updatedAt: "2026-01-01"
 		};
 		const signal = dream.signals[0]!;
@@ -64,8 +64,6 @@ describe("MarkdownEditor", function MarkdownEditorTests()
 		expect(markdown).toContain("> κατέβην");
 		expect(markdown).toContain("Source: Republic · s1");
 		expect(markdown).toContain("## Observation\n\nAn observation");
-		expect(markdown).toContain("### Resonance\n\nA connection");
-		expect(markdown).toContain("#### Attached Passage: republic · s1");
 	});
 
 	it("renders read-only Markdown safely and updates without publishing edits", async function RendersReadOnlyAsync()
@@ -213,7 +211,7 @@ describe("MarkdownEditor", function MarkdownEditorTests()
 		const dream: Dream = {
 			id: "formatted", workId: "republic", dialogue: "Republic", title: "Formatting",
 			source: { ...selection, sourceRefs: ["s1"], startSourceRef: "s1", endSourceRef: "s1" },
-			signals: [{ id: "one", sourceRef: "s1", selection, text: "κατέβην", description: markdown, resonances: [] }],
+			signals: [{ id: "one", sourceRef: "s1", selection, text: "κατέβην", description: markdown }],
 			reflection: markdown, linkedDreamIds: [], createdAt: "2026-09-06", updatedAt: "2026-09-06"
 		};
 		const serialized = SerializeDreamMarkdown(dream);

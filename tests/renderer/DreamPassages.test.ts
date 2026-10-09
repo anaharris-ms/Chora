@@ -82,7 +82,7 @@ describe("Dream passage matching", function PassageTests()
 		try
 		{
 			await events.PublishAsync("library.text-opened", {});
-			expect(root.querySelector<HTMLSelectElement>("[data-reader-work]")?.selectedOptions[0].text).toBe("Greek title");
+			expect(root.querySelector("[data-reader-work]")).toBeNull();
 			expect(root.querySelector(".work-header-greek")).toBeNull();
 			const headings = Array.from(root.querySelectorAll<HTMLElement>(".book-heading"));
 			expect(headings.map(function HeadingText(heading): string { return heading.textContent ?? ""; })).toEqual(["Book I", "Book II"]);
@@ -98,7 +98,7 @@ describe("Dream passage matching", function PassageTests()
 			expect(root.querySelector(".reader-search-menu > summary")?.getAttribute("aria-label")).toBe("Find in text");
 			expect(root.querySelector(".reader-settings-menu > summary")?.getAttribute("aria-label")).toBe("Reading settings");
 			const navigation = root.querySelector(".reader-passage-navigation")!;
-			expect(navigation.querySelector("[data-reader-work]")).not.toBeNull();
+			expect(navigation.querySelector("[data-reader-work]")).toBeNull();
 			expect(navigation.querySelector("[data-book-navigation]")).not.toBeNull();
 			expect(navigation.querySelector("[data-locator-navigation]")).not.toBeNull();
 			expect(navigation.querySelector("[data-locator-jump]")).toBeNull();
@@ -211,7 +211,7 @@ describe("Dream passage matching", function PassageTests()
 		expect(store.GetVisibleCatalogue("", text)).toEqual([dream]);
 	});
 
-	it("refreshes work-scoped Dreams when the reader title selects another text", async function SwitchesWorkAsync(): Promise<void>
+	it("refreshes work-scoped Dreams when another text is requested", async function SwitchesWorkAsync(): Promise<void>
 	{
 		const events = new ChoraEventBus<ChoraEvents>();
 		const errors = new ErrorManager(events);
@@ -248,19 +248,15 @@ describe("Dream passage matching", function PassageTests()
 		try
 		{
 			await events.PublishAsync("library.text-opened", {});
-			const select = readingRoot.querySelector<HTMLSelectElement>("[data-reader-work]")!;
-			expect(select.selectedOptions[0].text).toBe("Republic");
+			expect(readingRoot.querySelector("[data-reader-work]")).toBeNull();
 			expect(catalogueRoot.querySelectorAll("[data-dream-id]")).toHaveLength(1);
 			store.SetSearchText("old query");
 			store.SetPassageFilter({ workId: text.id, segmentKey: "s1", label: "Republic" });
 			list.mockClear();
-			select.value = otherText.id;
-			select.dispatchEvent(new Event("change", { bubbles: true }));
+			await events.PublishAsync("library.text-open-requested", { textId: otherText.id });
 			await vi.waitFor(function WorkRendered(): void
 			{
-				const current = readingRoot.querySelector<HTMLSelectElement>("[data-reader-work]");
-				expect(current?.value).toBe("phaedo");
-				expect(current?.selectedOptions[0].text).toBe("Phaedo");
+				expect(library.GetText()?.id).toBe("phaedo");
 				expect(catalogueRoot.querySelector("[data-dream-id]")?.getAttribute("data-dream-id")).toBe(otherDream.id);
 			});
 			expect(list).toHaveBeenCalledOnce();

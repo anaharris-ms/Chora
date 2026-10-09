@@ -1,11 +1,10 @@
-import type { Dream, DreamSignal, DreamResonance } from "../../shared/dreams/DreamTypes.js";
+import type { Dream, DreamSignal } from "../../shared/dreams/DreamTypes.js";
 import { TabPanel } from "../ui/TabPanel.js";
 import { EscapeHtml } from "../ui/Html.js";
 import { DreamController } from "./DreamController.js";
 import { MarkdownEditor } from "../ui/MarkdownEditor.js";
 import type { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
-import { createElement, MessageCircle, Link2, Plus } from "lucide";
-import { LinkIcon, SaveIcon, TrashIcon, MoreIcon, NextIcon } from "../ui/Icons.js";
+import { TrashIcon, MoreIcon } from "../ui/Icons.js";
 
 // Owns signal row DOM and disclosure behavior, without replacing the Dream editor.
 export class DreamSignalsPanel extends TabPanel
@@ -23,11 +22,8 @@ export class DreamSignalsPanel extends TabPanel
 	private readonly editors = new Map<string, MarkdownEditor>();
 	// Only the latest reveal request may scroll after editor initialization.
 	private revealVersion = 0;
-	// Signal identifiers currently showing an unsaved resonance quick-capture input.
-	private readonly captureRows = new Set<string>();
 	// Retained listeners for disposal.
 	private readonly clickHandler = this.HandleClick.bind(this);
-	private readonly keyDownHandler = this.HandleKeyDown.bind(this);
 	// Dream identity currently rendered by this panel.
 	private dreamId: string | null = null;
 
@@ -44,7 +40,6 @@ export class DreamSignalsPanel extends TabPanel
 		this.detail.append(this.empty);
 		this.Root.append(this.list, this.detail);
 		this.Root.addEventListener("click", this.clickHandler);
-		this.Root.addEventListener("keydown", this.keyDownHandler);
 	}
 
 	// Reconciles structural changes while retaining existing editors and disclosure state.
@@ -63,7 +58,6 @@ export class DreamSignalsPanel extends TabPanel
 				this.rows.delete(id);
 				this.navigation.get(id)?.remove();
 				this.navigation.delete(id);
-				this.captureRows.delete(id);
 			}
 		}
 		let previous: HTMLElement | null = null;
@@ -78,7 +72,6 @@ export class DreamSignalsPanel extends TabPanel
 			else
 			{
 				this.editors.get(signal.id)?.SetMarkdown(signal.description);
-				this.RefreshRowResonances(signal.id, row);
 			}
 			const header = this.navigation.get(signal.id)!;
 			const next: ChildNode | null = previous === null ? this.list.firstChild : previous.nextSibling;
@@ -144,12 +137,10 @@ export class DreamSignalsPanel extends TabPanel
 	{
 		this.revealVersion += 1;
 		this.Root.removeEventListener("click", this.clickHandler);
-		this.Root.removeEventListener("keydown", this.keyDownHandler);
 		for (const editor of this.editors.values()) editor.Dispose();
 		this.editors.clear();
 		this.rows.clear();
 		this.navigation.clear();
-		this.captureRows.clear();
 		super.Dispose();
 	}
 
@@ -161,7 +152,7 @@ export class DreamSignalsPanel extends TabPanel
 		row.dataset.signalId = signal.id;
 		const header = document.createElement("div");
 		header.className = "signal-header";
-		header.innerHTML = `<button class="signal-row button-control" data-signal-toggle="${EscapeHtml(signal.id)}" type="button" aria-expanded="false"><strong class="signal-heading">${EscapeHtml(signal.text)}</strong></button><button class="signal-chat-button dream-icon-button button-control" data-signal-chat="${EscapeHtml(signal.id)}" type="button" title="Chat with the model" aria-label="Chat with the model"></button>`;
+		header.innerHTML = `<button class="signal-row button-control" data-signal-toggle="${EscapeHtml(signal.id)}" type="button" aria-expanded="false"><strong class="signal-heading">${EscapeHtml(signal.text)}</strong></button>`;
 		this.navigation.set(signal.id, header);
 		const escapedSignalId = EscapeHtml(signal.id);
 		row.innerHTML = `<header class="signal-detail-title"><details class="action-menu"><summary title="Signal actions" aria-label="Signal actions">${MoreIcon}</summary><div class="action-menu-items"><button data-add-signal-to-idea="${escapedSignalId}" type="button">Add to Idea&hellip;</button><button data-delete-signal="${escapedSignalId}" type="button">${TrashIcon}Delete signal</button></div></details></header>`;
@@ -169,10 +160,6 @@ export class DreamSignalsPanel extends TabPanel
 		body.className = "signal-detail-body";
 		row.append(body);
 		this.detail.append(row);
-		const chatButton = header.querySelector("[data-signal-chat]");
-		const icon = createElement(MessageCircle);
-		icon.setAttribute("aria-hidden", "true");
-		chatButton?.append(icon);
 		const change = this.HandleDescriptionChange.bind(this, signal.id);
 		const editor = new MarkdownEditor(signal.description, "Signal description", change, this.errors);
 		editor.Root.classList.add("signal-markdown-editor");
@@ -186,18 +173,6 @@ export class DreamSignalsPanel extends TabPanel
 		observation.className = "signal-observation";
 		observation.append(editor.Root);
 		body.append(observation);
-		const section = document.createElement("details");
-		section.className = "resonance-section";
-		section.dataset.resonanceSection = "";
-		section.open = true;
-		section.innerHTML = `<summary class="resonance-section-heading"><span class="resonance-heading-icon" aria-hidden="true"></span><span>Resonances</span><button class="dream-icon-button button-control resonance-add-button" data-resonance-add type="button" title="Add resonance" aria-label="Add resonance"></button></summary><div class="resonance-list" data-resonance-list>${this.RenderResonanceItems(signal)}</div>`;
-		const addIcon = createElement(Plus);
-		addIcon.setAttribute("aria-hidden", "true");
-		section.querySelector("[data-resonance-add]")?.append(addIcon);
-		const resonanceIcon = createElement(Link2);
-		section.querySelector(".resonance-heading-icon")?.append(resonanceIcon);
-		body.append(section);
-		if (signal.resonances.length === 0) this.OpenResonanceCapture(signal.id, row, false);
 		return row;
 	}
 
@@ -209,12 +184,6 @@ export class DreamSignalsPanel extends TabPanel
 		if (menu !== null && menu !== undefined && target?.closest("button") !== null) menu.open = false;
 		const deleteSignalId = target?.closest<HTMLElement>("[data-delete-signal]")?.dataset.deleteSignal;
 		if (deleteSignalId !== undefined) this.controller.RemoveSignal(deleteSignalId);
-		const chatSignalId = target?.closest<HTMLElement>("[data-signal-chat]")?.dataset.signalChat;
-		if (chatSignalId !== undefined)
-		{
-			this.controller.ChatWithSignal(chatSignalId);
-		}
-
 		const addToIdeaSignalId = target?.closest<HTMLElement>("[data-add-signal-to-idea]")?.dataset.addSignalToIdea;
 
 		if (addToIdeaSignalId !== undefined)
@@ -228,236 +197,6 @@ export class DreamSignalsPanel extends TabPanel
 			this.revealVersion += 1;
 			this.SelectSignal(toggleButton.dataset.signalToggle ?? null);
 		}
-
-		const addButton = target?.closest<HTMLElement>("[data-resonance-add]");
-		const addRow = addButton?.closest<HTMLElement>(".signal-item");
-		if (addButton !== null && addButton !== undefined && addRow !== null && addRow !== undefined)
-		{
-			event.preventDefault();
-			const section = addRow.querySelector<HTMLDetailsElement>("[data-resonance-section]");
-			if (section !== null) section.open = true;
-			this.OpenResonanceCapture(addRow.dataset.signalId ?? "", addRow);
-		}
-
-		const saveButton = target?.closest<HTMLElement>("[data-resonance-save]");
-		const captureRow = saveButton?.closest<HTMLElement>("[data-resonance-capture]");
-		const captureInput = captureRow?.querySelector<HTMLInputElement>("[data-resonance-input]");
-		if (captureInput !== null && captureInput !== undefined)
-		{
-			void this.CommitResonanceCaptureAsync(captureInput);
-		}
-
-		const editButton = target?.closest<HTMLElement>("[data-resonance-edit]");
-		const editRow = editButton?.closest<HTMLElement>(".signal-item");
-		if (editButton !== null && editButton !== undefined && editRow !== null && editRow !== undefined)
-		{
-			this.OpenResonanceEdit(editRow.dataset.signalId ?? "", editButton.dataset.resonanceEdit ?? "", editRow);
-		}
-
-		const deleteButton = target?.closest<HTMLElement>("[data-resonance-delete]");
-		const deleteRow = deleteButton?.closest<HTMLElement>(".signal-item");
-		if (deleteButton !== null && deleteButton !== undefined && deleteRow !== null && deleteRow !== undefined)
-		{
-			const signalId = deleteRow.dataset.signalId ?? "";
-			this.controller.RemoveResonance(signalId, deleteButton.dataset.resonanceDelete ?? "");
-			this.RefreshRowResonances(signalId, deleteRow);
-		}
-
-		const attachButton = target?.closest<HTMLElement>("[data-resonance-attach]");
-		const attachRow = attachButton?.closest<HTMLElement>(".signal-item");
-		if (attachButton !== null && attachButton !== undefined && attachRow !== null && attachRow !== undefined)
-		{
-			const signalId = attachRow.dataset.signalId ?? "";
-			this.controller.RequestAttachResonanceTarget(signalId, attachButton.dataset.resonanceAttach ?? "");
-			this.RefreshRowResonances(signalId, attachRow);
-		}
-
-		const cancelAttachButton = target?.closest<HTMLElement>("[data-resonance-attach-cancel]");
-		const cancelAttachRow = cancelAttachButton?.closest<HTMLElement>(".signal-item");
-		if (cancelAttachButton !== null && cancelAttachButton !== undefined && cancelAttachRow !== null && cancelAttachRow !== undefined)
-		{
-			this.controller.CancelResonanceAttach();
-			this.RefreshRowResonances(cancelAttachRow.dataset.signalId ?? "", cancelAttachRow);
-		}
-
-		const targetJumpButton = target?.closest<HTMLElement>("[data-resonance-target-jump]");
-		if (targetJumpButton !== null && targetJumpButton !== undefined)
-		{
-			const item = targetJumpButton.closest<HTMLElement>("[data-resonance-item]");
-			const jumpRow = targetJumpButton.closest<HTMLElement>(".signal-item");
-			const signalId = jumpRow?.dataset.signalId;
-			const resonanceId = item?.dataset.resonanceItem;
-			if (signalId !== undefined && resonanceId !== undefined) this.controller.JumpToResonanceTarget(signalId, resonanceId, targetJumpButton.dataset.resonanceTargetJump ?? "");
-		}
-
-		const targetRemoveButton = target?.closest<HTMLElement>("[data-resonance-target-remove]");
-		if (targetRemoveButton !== null && targetRemoveButton !== undefined)
-		{
-			const item = targetRemoveButton.closest<HTMLElement>("[data-resonance-item]");
-			const removeRow = targetRemoveButton.closest<HTMLElement>(".signal-item");
-			const signalId = removeRow?.dataset.signalId;
-			const resonanceId = item?.dataset.resonanceItem;
-			if (signalId !== undefined && resonanceId !== undefined && removeRow !== null && removeRow !== undefined)
-			{
-				this.controller.RemoveResonanceTarget(signalId, resonanceId, targetRemoveButton.dataset.resonanceTargetRemove ?? "");
-				this.RefreshRowResonances(signalId, removeRow);
-			}
-		}
-	}
-
-	// Commits or cancels an in-progress resonance quick-capture on Enter/Escape.
-	private HandleKeyDown(event: KeyboardEvent): void
-	{
-		const target = event.target as HTMLElement | null;
-		if (target !== null && target.matches("[data-resonance-input]"))
-		{
-			if (event.key === "Enter")
-			{
-				event.preventDefault();
-				void this.CommitResonanceCaptureAsync(target as HTMLInputElement);
-			}
-			else if (event.key === "Escape")
-			{
-				event.preventDefault();
-				this.CancelResonanceCapture(target as HTMLInputElement);
-			}
-		}
-	}
-
-	// Reveals an empty quick-capture input for a new resonance on this signal.
-	private OpenResonanceCapture(signalId: string, row: HTMLElement, focus = true): void
-	{
-		if (signalId.length > 0 && !this.captureRows.has(signalId))
-		{
-			const list = row.querySelector<HTMLElement>("[data-resonance-list]");
-			if (list !== null)
-			{
-				this.captureRows.add(signalId);
-				const captureRow = this.CreateCaptureRow("");
-				list.append(captureRow);
-			}
-		}
-		if (focus) row.querySelector<HTMLInputElement>("[data-resonance-input]")?.focus();
-	}
-
-	// Replaces one resonance's compact display with an editable quick-capture input, prefilled with its note.
-	private OpenResonanceEdit(signalId: string, resonanceId: string, row: HTMLElement): void
-	{
-		if (signalId.length > 0 && resonanceId.length > 0 && !this.captureRows.has(signalId))
-		{
-			const item = row.querySelector<HTMLElement>(`[data-resonance-item="${CSS.escape(resonanceId)}"]`);
-			const dream = this.controller.GetActiveDream();
-			const signal = dream?.signals.find((candidate) => candidate.id === signalId);
-			const resonance = signal?.resonances.find((candidate) => candidate.id === resonanceId);
-			if (item !== null && item !== undefined && resonance !== undefined)
-			{
-				this.captureRows.add(signalId);
-				const captureRow = this.CreateCaptureRow(resonance.note);
-				captureRow.dataset.resonanceEditId = resonanceId;
-				item.replaceWith(captureRow);
-				const input = captureRow.querySelector<HTMLInputElement>("input");
-				input?.focus();
-				input?.select();
-			}
-		}
-	}
-
-	// Builds the shared markup for a resonance quick-capture input, used for both new and edited resonances.
-	private CreateCaptureRow(initialValue: string): HTMLElement
-	{
-		const captureRow = document.createElement("div");
-		captureRow.className = "resonance-capture";
-		captureRow.dataset.resonanceCapture = "";
-		captureRow.innerHTML = `<input type="text" class="resonance-input" data-resonance-input aria-label="Resonance note" placeholder="What does this bring to mind?" value="${EscapeHtml(initialValue)}"><button class="dream-icon-button button-control" data-resonance-save type="button" title="Save resonance" aria-label="Save resonance">${SaveIcon}</button>`;
-		return captureRow;
-	}
-
-	// Commits a quick-capture input as a new resonance or an updated note, then closes it.
-	private async CommitResonanceCaptureAsync(input: HTMLInputElement): Promise<void>
-	{
-		const row = input.closest<HTMLElement>(".signal-item");
-		const captureRow = input.closest<HTMLElement>("[data-resonance-capture]");
-		const signalId = row?.dataset.signalId ?? "";
-		const resonanceId = captureRow?.dataset.resonanceEditId ?? "";
-		const value = input.value;
-		if (signalId.length > 0 && value.trim().length > 0)
-		{
-			if (resonanceId.length > 0) this.controller.UpdateResonanceNote(signalId, resonanceId, value);
-			else await this.controller.AddResonanceAsync(signalId, value);
-		}
-		if (signalId.length > 0 && row !== null && row !== undefined)
-		{
-			this.captureRows.delete(signalId);
-			this.RefreshRowResonances(signalId, row);
-		}
-	}
-
-	// Discards an in-progress resonance quick-capture without committing it.
-	private CancelResonanceCapture(input: HTMLInputElement): void
-	{
-		const row = input.closest<HTMLElement>(".signal-item");
-		const signalId = row?.dataset.signalId;
-		if (signalId !== undefined && row !== null && row !== undefined)
-		{
-			this.captureRows.delete(signalId);
-			this.RefreshRowResonances(signalId, row);
-		}
-	}
-
-	// Regenerates one row's resonance list from current Dream data, unless a quick-capture input is open for it.
-	private RefreshRowResonances(signalId: string, row: HTMLElement): void
-	{
-		if (signalId.length > 0 && !this.captureRows.has(signalId))
-		{
-			const dream = this.controller.GetActiveDream();
-			const signal = dream?.signals.find((candidate) => candidate.id === signalId);
-			const list = row.querySelector<HTMLElement>("[data-resonance-list]");
-			if (signal !== undefined && list !== null)
-			{
-				list.innerHTML = this.RenderResonanceItems(signal);
-				if (signal.resonances.length === 0) this.OpenResonanceCapture(signalId, row, false);
-			}
-		}
-	}
-
-	// Renders the saved resonances on a signal.
-	private RenderResonanceItems(signal: DreamSignal): string
-	{
-		let content = "";
-		if (signal.resonances.length > 0)
-		{
-			for (const resonance of signal.resonances) content += this.RenderResonanceItem(signal.id, resonance);
-		}
-		return content;
-	}
-
-	// Renders one resonance's compact note, actions, and attached-passage chips.
-	private RenderResonanceItem(signalId: string, resonance: DreamResonance): string
-	{
-		const armed = this.controller.GetArmedResonanceAttach();
-		const isArmed = armed !== null && armed.signalId === signalId && armed.resonanceId === resonance.id;
-		const attachControl = isArmed
-			? `<span class="resonance-armed-hint">Select a passage, then choose &ldquo;Attach to Resonance&rdquo; &middot; <button class="resonance-armed-cancel button-control" data-resonance-attach-cancel type="button">Cancel</button></span>`
-			: `<button class="dream-icon-button button-control resonance-icon-button" data-resonance-attach="${EscapeHtml(resonance.id)}" type="button" title="Attach passage" aria-label="Attach passage">${LinkIcon}</button>`;
-		const targets = this.RenderResonanceTargets(resonance);
-		return `<div class="resonance-item" data-resonance-item="${EscapeHtml(resonance.id)}"><div class="resonance-item-row"><span class="resonance-bullet" aria-hidden="true">${NextIcon}</span><button class="resonance-note button-control" data-resonance-edit="${EscapeHtml(resonance.id)}" type="button">${EscapeHtml(resonance.note)}</button><span class="resonance-item-actions">${attachControl}<button class="dream-icon-button button-control resonance-icon-button" data-resonance-delete="${EscapeHtml(resonance.id)}" type="button" title="Delete resonance" aria-label="Delete resonance">${TrashIcon}</button></span></div>${targets}</div>`;
-	}
-
-	// Renders the attached-passage chips for one resonance, or nothing when it has none.
-	private RenderResonanceTargets(resonance: DreamResonance): string
-	{
-		let content = "";
-		if (resonance.targets.length > 0)
-		{
-			let chips = "";
-			for (const target of resonance.targets)
-			{
-				const label = target.selection.locatorStart?.value ?? target.selection.start.segmentKey;
-				chips += `<span class="resonance-target-chip"><button class="resonance-target-jump button-control" data-resonance-target-jump="${EscapeHtml(target.id)}" type="button" title="Jump to this passage">${EscapeHtml(label)}</button><button class="resonance-target-remove button-control" data-resonance-target-remove="${EscapeHtml(target.id)}" type="button" title="Remove attachment" aria-label="Remove attachment">&times;</button></span>`;
-			}
-			content = `<div class="resonance-targets">${chips}</div>`;
-		}
-		return content;
 	}
 
 	// Sends description edits through the existing autosave workflow.

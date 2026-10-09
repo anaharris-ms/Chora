@@ -20,7 +20,6 @@ function CreateSignal(id: string, description: string): DreamSignal
 		},
 		text: id,
 		description,
-		resonances: []
 	};
 
 	return signal;

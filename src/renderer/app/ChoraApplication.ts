@@ -13,7 +13,6 @@ import { LibraryStore } from "../library/LibraryStore.js";
 import { DreamController } from "../dreams/DreamController.js";
 import { DreamGateway } from "../dreams/DreamGateway.js";
 import { DreamStore } from "../dreams/DreamStore.js";
-import { ChatPanel } from "../chat/ChatPanel.js";
 import { DocumentPanel } from "../library/DocumentPanel.js";
 import { DreamPanel } from "../dreams/DreamPanel.js";
 import { DreamPassagePanel } from "../dreams/DreamPassagePanel.js";
@@ -28,6 +27,7 @@ import { LookupGateway } from "../library/lookup/LookupGateway.js";
 import { LookupController } from "../library/lookup/LookupController.js";
 import { LookupPanel } from "../library/lookup/LookupPanel.js";
 import { CloseActionMenusOutside as CloseOpenActionMenus } from "../ui/ActionMenus.js";
+import { WorkspacePanel } from "../workspace/WorkspacePanel.js";
 
 type ResizablePane = "left" | "dream";
 
@@ -80,13 +80,14 @@ export class ChoraApplication
 	private readonly chatGateway = new ChatGateway();
 	private readonly chat = new ChatController(this.events, this.errors, this.contexts, this.chatStore, this.chatGateway);
 	// Owns renderer-side Idea state.
-	private readonly ideaStore = new IdeaStore();
+	private readonly ideaStore = new IdeaStore(this.sessions);
 	// Provides the stateless Idea IPC client.
 	private readonly ideaGateway = new IdeaGateway();
 	// Coordinates Signal-first Idea workflows.
 	private readonly ideas = new IdeaController(this.events, this.errors, this.ideaStore, this.ideaGateway);
 	// Dream editor instance receiving contextual navigation state from Ideas.
 	private dreamEditorPanel: DreamPanel | null = null;
+	private workspacePanel: WorkspacePanel | null = null;
 	// Whether the active Dream is a temporary Signal preview opened from an Idea.
 	private isIdeaSignalPreview = false;
 
@@ -112,28 +113,26 @@ export class ChoraApplication
 		{
 			this.isStarted = true;
 			this.settings.Apply();
-			this.root.innerHTML = `<main class="shell dream-open"><aside class="left-panel"><nav class="workspace-views" aria-label="Workspace views"><button class="activity-button button-control selected" data-left-view="dreams" type="button" aria-pressed="true">Dreams</button><button class="activity-button button-control" data-left-view="chat" type="button" aria-pressed="false">Chat</button><button class="activity-button button-control" data-left-view="ideas" type="button" aria-pressed="false">Ideas</button></nav><div class="left-view" data-chat-panel hidden></div><div class="left-view" data-idea-panel hidden></div><div class="left-view" data-dream-catalogue-panel></div></aside><section class="center-panel" data-document-panel></section><aside class="right-panel" data-editor-panel><section class="editor-empty-state workspace-welcome" data-editor-empty aria-labelledby="editor-empty-heading"><h1 id="editor-empty-heading">Dreams</h1><div class="workspace-welcome-actions"><button class="button-control" data-editor-open-dream type="button">Open Dream</button><button class="button-control" data-editor-create-dream type="button">Create Dream</button></div></section><div data-dream-panel hidden></div><div data-idea-editor-panel hidden></div></aside><div class="panel-resize-handle" data-resize-pane="left" role="separator" tabindex="0" aria-label="Resize left workspace" aria-orientation="vertical"></div><div class="panel-resize-handle" data-resize-pane="dream" role="separator" tabindex="0" aria-label="Resize editor" aria-orientation="vertical"></div></main><div class="application-error" data-error-output hidden></div>`;
-			const chatRoot = this.RequireElement("[data-chat-panel]");
+			this.root.innerHTML = `<main class="shell dream-open"><aside class="left-panel"><div class="left-view workspace-explorer-host" data-workspace-explorer></div></aside><section class="center-panel" data-document-panel></section><aside class="right-panel" data-editor-panel><div data-workspace-tabs></div><section class="editor-empty-state workspace-welcome" data-editor-empty aria-labelledby="editor-empty-heading"><h1 id="editor-empty-heading">Workspace</h1><p>Select an Idea or Dream from the Explorer.</p></section><div data-dream-panel hidden></div><div data-idea-editor-panel hidden></div></aside><div class="panel-resize-handle" data-resize-pane="left" role="separator" tabindex="0" aria-label="Resize Explorer" aria-orientation="vertical"></div><div class="panel-resize-handle" data-resize-pane="dream" role="separator" tabindex="0" aria-label="Resize editor" aria-orientation="vertical"></div></main><div class="application-error" data-error-output hidden></div>`;
+			const explorerRoot = this.RequireElement("[data-workspace-explorer]");
+			const tabsRoot = this.RequireElement("[data-workspace-tabs]");
 			const readerColumn = this.RequireElement("[data-document-panel]");
 			readerColumn.removeAttribute("data-document-panel");
 			readerColumn.innerHTML = `<div class="reader-workspace"><section class="document-panel" data-document-panel></section><section data-lookup-panel aria-label="Dictionary" hidden></section></div>`;
-			const ideaRoot = this.RequireElement("[data-idea-panel]");
-			const dreamCatalogueRoot = this.RequireElement("[data-dream-catalogue-panel]");
 			const documentRoot = this.RequireElement("[data-document-panel]");
 			const dreamRoot = this.RequireElement("[data-dream-panel]");
 			const ideaEditorRoot = this.RequireElement("[data-idea-editor-panel]");
 			const lookupRoot = this.RequireElement("[data-lookup-panel]");
 			this.disposables.push(new LookupPanel(lookupRoot, this.events, this.lookupStore, this.lookup));
-			this.disposables.push(new ChatPanel(chatRoot, this.events, this.chatStore, this.chat));
-			const ideaCatalogue = new IdeaPanel(ideaRoot, this.events, this.ideaStore, this.ideas, this.dreamStore, "catalogue");
 			const ideaEditor = new IdeaPanel(ideaEditorRoot, this.events, this.ideaStore, this.ideas, this.dreamStore, "editor");
-			this.disposables.push(ideaCatalogue, ideaEditor);
+			this.disposables.push(ideaEditor);
 			this.disposables.push(new DocumentPanel(documentRoot, this.events, this.libraryStore, this.library, this.settings));
 			const passagePanel = new DreamPassagePanel(documentRoot, this.events, this.libraryStore, this.dreams);
 			this.disposables.push(passagePanel);
-			this.disposables.push(new DreamPanel(dreamCatalogueRoot, this.events, this.dreamStore, this.dreams, this.libraryStore, "catalogue"));
 			this.dreamEditorPanel = new DreamPanel(dreamRoot, this.events, this.dreamStore, this.dreams, this.libraryStore, "editor");
 			this.disposables.push(this.dreamEditorPanel);
+			this.workspacePanel = new WorkspacePanel(explorerRoot, tabsRoot, this.events, this.dreamStore, this.dreams, this.ideaStore, this.ideas, this.libraryStore);
+			this.disposables.push(this.workspacePanel);
 			this.root.addEventListener("click", this.leftViewClickHandler);
 			this.root.addEventListener("change", this.settingsChangeHandler);
 			this.root.addEventListener("pointerdown", this.panelResizePointerDownHandler);
@@ -178,8 +177,6 @@ export class ChoraApplication
 	private RegisterApplicationEvents(): void
 	{
 		const dreamOpened = this.events.Subscribe("dream.opened", this.HandleDreamOpened.bind(this));
-		const chatConversationOpened = this.events.Subscribe("chat.conversation-opened", this.HandleChatConversationOpened.bind(this));
-		this.externalSubscriptions.push(chatConversationOpened);
 		const dreamClosed = this.events.Subscribe("dream.closed", this.HandleDreamClosed.bind(this));
 		const passageFiltered = this.events.Subscribe("dream.passage-filter-changed", this.HandlePassageFilterChanged.bind(this));
 		this.externalSubscriptions.push(passageFiltered);
@@ -195,7 +192,8 @@ export class ChoraApplication
 		const ideaSignalViewRequested = this.events.Subscribe("idea.signal-view-requested", ideaSignalViewHandler);
 		const ideaReturnRequested = this.events.Subscribe("idea.return-requested", ideaReturnHandler);
 		const ideasChanged = this.events.Subscribe("ideas.changed", ideasChangedHandler);
-		this.externalSubscriptions.push(dreamOpened, dreamClosed, errorReported, textOpened, ideaAddSignalRequested, ideaSignalViewRequested, ideaReturnRequested, ideasChanged);
+		const documentSelected = this.events.Subscribe("workspace.document-selected", this.HandleWorkspaceDocumentSelected.bind(this));
+		this.externalSubscriptions.push(dreamOpened, dreamClosed, errorReported, textOpened, ideaAddSignalRequested, ideaSignalViewRequested, ideaReturnRequested, ideasChanged, documentSelected);
 		this.externalSubscriptions.push(this.libraryGateway.SubscribeToSelection(this.HandleTextSelected.bind(this)));
 		this.externalSubscriptions.push(this.libraryGateway.SubscribeToExternalText(this.HandleExternalTextLoaded.bind(this)));
 		window.addEventListener("keydown", this.keyDownHandler);
@@ -205,39 +203,22 @@ export class ChoraApplication
 		this.NormalizePanelWidths();
 	}
 
-	// Reveals the active conversation and focuses its composer without scrolling the reading pane.
-	private HandleChatConversationOpened(): void
-	{
-		this.SetLeftView("chat");
-		const composer = this.root.querySelector<HTMLTextAreaElement>("[data-chat-input]");
-		composer?.focus({ preventScroll: true });
-	}
-
 	// Reveals the Dream editor when a Dream is opened.
 	private HandleDreamOpened(): void
 	{
 		this.ShowEditorPanel("dream");
-		if (!this.isIdeaSignalPreview)
-		{
-			this.SetLeftView("dreams");
-		}
 	}
 
 	// Reveals passage-filtered Dreams without opening an editor or navigating the text.
 	private HandlePassageFilterChanged(): void
 	{
-		const filter = this.dreamStore.GetPassageFilter();
-		if (filter !== null)
-		{
-			this.SetLeftView("dreams");
-		}
+		this.root.querySelector<HTMLInputElement>("[data-workspace-search]")?.focus();
 	}
 
 	// Reveals the Dreams Explorer and places keyboard focus in its search field.
 	private HandleDreamsFocusRequested(): void
 	{
-		this.SetLeftView("dreams");
-		const search = this.root.querySelector<HTMLInputElement>("[data-dream-search]");
+		const search = this.root.querySelector<HTMLInputElement>("[data-workspace-search]");
 		search?.focus();
 	}
 
@@ -257,9 +238,10 @@ export class ChoraApplication
 		const draft = this.ideaStore.GetDraft();
 		const pendingReference = this.ideaStore.GetPendingAddReference();
 
-		if (draft !== null && pendingReference === null)
+		if (draft !== null && pendingReference === null && this.dreamStore.GetActiveDream() === null)
 		{
 			this.ShowEditorPanel("idea");
+			this.workspacePanel?.ActivateIdeaDocument();
 		}
 		else if (draft === null)
 		{
@@ -297,18 +279,16 @@ export class ChoraApplication
 			signalId: event.signalId
 		};
 		this.ideas.BeginAddToIdea(reference);
-		this.SetLeftView("ideas");
 	}
 
 	// Opens an Idea-referenced Signal in the real Dream editor while preserving Ideas and the reader.
 	private async HandleIdeaSignalViewRequestedAsync(event: ChoraEvents["idea.signal-view-requested"]): Promise<void>
 	{
 		this.isIdeaSignalPreview = true;
-		this.dreamEditorPanel?.SetIdeaReturnAvailable(true);
+		this.workspacePanel?.SetIdeaReturnAvailable(true);
 		try
 		{
 			await this.dreams.OpenSignalAsync(event.dreamId, event.signalId);
-			this.SetLeftView("ideas");
 		}
 		catch (error)
 		{
@@ -324,7 +304,7 @@ export class ChoraApplication
 		{
 			this.ClearIdeaSignalPreview();
 			this.ShowEditorPanel("idea");
-			this.SetLeftView("ideas");
+			this.workspacePanel?.ActivateIdeaDocument();
 		}
 	}
 
@@ -332,7 +312,12 @@ export class ChoraApplication
 	private ClearIdeaSignalPreview(): void
 	{
 		this.isIdeaSignalPreview = false;
-		this.dreamEditorPanel?.SetIdeaReturnAvailable(false);
+		this.workspacePanel?.SetIdeaReturnAvailable(false);
+	}
+
+	private HandleWorkspaceDocumentSelected(event: ChoraEvents["workspace.document-selected"]): void
+	{
+		this.ShowEditorPanel(event.kind);
 	}
 
 	// Opens a text selected in the main process's application menu or dock.
@@ -492,15 +477,12 @@ export class ChoraApplication
 		for (const handle of Array.from(handles)) handle.classList.remove("is-active");
 	}
 
-	// Routes clicks on the activity rail, font stepper, and appearance toggle to their workflows.
+	// Routes application-level reading-setting controls to their workflows.
 	private HandleLeftViewClick(event: Event): void
 	{
 		const target = event.target as HTMLElement | null;
 		const appearanceButton = target?.closest<HTMLElement>("[data-toggle-appearance]");
 		const fontStep = target?.closest<HTMLElement>("[data-font-size]")?.dataset.fontSize;
-		const view = target?.closest<HTMLElement>("[data-left-view]")?.dataset.leftView;
-		const openDream = target?.closest("[data-editor-open-dream]");
-		const createDream = target?.closest("[data-editor-create-dream]");
 
 		if (appearanceButton != null)
 		{
@@ -512,16 +494,6 @@ export class ChoraApplication
 			this.ChangeFontSize(Number.parseInt(fontStep, 10));
 		}
 
-		if (openDream !== null && openDream !== undefined) this.HandleDreamsFocusRequested();
-		if (createDream !== null && createDream !== undefined) void this.dreams.CreateFromCurrentSelection();
-
-		if (view === "chat" || view === "ideas" || view === "dreams")
-		{
-			this.root.querySelector(".shell")?.classList.remove("left-collapsed");
-			this.SetLeftView(view);
-			const menu = target?.closest<HTMLDetailsElement>(".action-menu");
-			if (menu !== null && menu !== undefined) menu.open = false;
-		}
 	}
 
 	// Applies a change to the reading-font selector.
@@ -532,24 +504,6 @@ export class ChoraApplication
 		if (target?.matches("[data-reading-font]") === true)
 		{
 			this.settings.SetFont(target.value as ReadingFont);
-		}
-	}
-
-	// Shows the requested left view and hides the others.
-	private SetLeftView(view: "chat" | "ideas" | "dreams"): void
-	{
-		const chatView = this.root.querySelector<HTMLElement>("[data-chat-panel]");
-		const ideaView = this.root.querySelector<HTMLElement>("[data-idea-panel]");
-		const dreamView = this.root.querySelector<HTMLElement>("[data-dream-catalogue-panel]");
-		const buttons = this.root.querySelectorAll<HTMLElement>(".activity-button[data-left-view]");
-		chatView?.toggleAttribute("hidden", view !== "chat");
-		ideaView?.toggleAttribute("hidden", view !== "ideas");
-		dreamView?.toggleAttribute("hidden", view !== "dreams");
-		for (const button of Array.from(buttons))
-		{
-			const selected = button.dataset.leftView === view;
-			button.classList.toggle("selected", selected);
-			button.setAttribute("aria-pressed", String(selected));
 		}
 	}
 

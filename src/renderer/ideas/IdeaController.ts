@@ -3,7 +3,7 @@ import type { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
 import { ChoraEventBus } from "../core/events/ChoraEventBus.js";
 import type { ChoraEvents } from "../core/events/ChoraEvents.js";
 import { IdeaGateway } from "./IdeaGateway.js";
-import { IdeaStore, type IdeaDraft } from "./IdeaStore.js";
+import { IdeaStore, type IdeaDraft, type IdeaTab } from "./IdeaStore.js";
 
 // Coordinates renderer-side Idea workflows without owning persistence authority.
 export class IdeaController
@@ -39,6 +39,12 @@ export class IdeaController
 
 		if (workId !== null)
 		{
+			if (this.store.HasOpenTab("new"))
+			{
+				this.store.ActivateTab("new");
+				await this.PublishChangedAsync();
+				return;
+			}
 			const draft: IdeaDraft = {
 				ideaId: null,
 				workId,
@@ -196,6 +202,12 @@ export class IdeaController
 	// Opens one durable Idea as a non-authoritative renderer draft.
 	public Edit(ideaId: string): void
 	{
+		if (this.store.HasOpenTab(ideaId))
+		{
+			this.store.ActivateTab(ideaId);
+			void this.PublishChangedAsync();
+			return;
+		}
 		const idea = this.store.GetIdea(ideaId);
 		let draft: IdeaDraft | null = null;
 
@@ -209,10 +221,27 @@ export class IdeaController
 		void publication;
 	}
 
+	public GetOpenTabs(): readonly IdeaTab[]
+	{
+		return this.store.GetOpenTabs();
+	}
+
+	public ActivateTab(key: string): void
+	{
+		if (this.store.ActivateTab(key) !== null) void this.PublishChangedAsync();
+	}
+
+	public CloseTab(key: string): void
+	{
+		this.store.CloseTab(key);
+		void this.PublishChangedAsync();
+	}
+
 	// Updates reader-editable text without rerendering the active editor.
 	public Update(title: string, content: string): void
 	{
 		this.store.UpdateDraft(title, content);
+		void this.events.PublishAsync("idea.draft-changed", {});
 	}
 
 	// Discards the active renderer draft and closes the Idea editor.

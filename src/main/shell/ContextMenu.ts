@@ -95,13 +95,6 @@ export async function ShowSelectionContextMenu(): Promise<SelectionAction>
 					resolve("add-dream-signal");
 				}
 			},
-			{
-				label: "Attach to Resonance",
-				click: () =>
-				{
-					resolve("attach-resonance-target");
-				}
-			},
 			{ type: "separator" },
 			{
 				label: "Copy",

@@ -1,6 +1,6 @@
 import type { LibraryText } from "../../shared/library/LibraryTypes.js";
 import type { TextSelection } from "../../shared/library/SelectionTypes.js";
-import type { Dream, DreamSignal, DreamResonance, ResonanceTarget, SourceSelection } from "../../shared/dreams/DreamTypes.js";
+import type { Dream, DreamSignal, SourceSelection } from "../../shared/dreams/DreamTypes.js";
 import type { ChoraEvents } from "../core/events/ChoraEvents.js";
 import { ChoraEventBus } from "../core/events/ChoraEventBus.js";
 import { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
@@ -9,7 +9,7 @@ import { CompareSelections, IsSelectionWithin, MergeSelections } from "../../sha
 import { CreateDreamSourceSelection } from "./SourceSelection.js";
 import { DreamMarkdownExport } from "../../shared/dreams/DreamMarkdownExport.js";
 import { DreamGateway } from "./DreamGateway.js";
-import { DreamStore, type ArmedResonanceAttach, type DreamChange, type DreamSaveState, type DreamTab, type ResonanceHit } from "./DreamStore.js";
+import { DreamStore, type DreamChange, type DreamSaveState, type DreamTab } from "./DreamStore.js";
 
 // Fields of a SourceSelection derived from a document span, independent of the reader's raw selection.
 type DerivedSourceFields = Pick<SourceSelection, "sourceRefs" | "startSourceRef" | "endSourceRef" | "division">;
@@ -53,7 +53,6 @@ export class DreamController
 		this.events.Subscribe("dream.source-extend-requested", this.HandleSourceExtendRequested.bind(this));
 		this.events.Subscribe("dream.passage-filter-requested", this.HandlePassageFilterRequestedAsync.bind(this));
 		this.events.Subscribe("library.text-opened", this.HandleFilterTextOpenedAsync.bind(this));
-		this.events.Subscribe("dream.resonance-target-attach-requested", this.HandleResonanceTargetAttachRequestedAsync.bind(this));
 	}
 
 	// Resolves a clicked passage against the current work before applying its source filter.
@@ -194,7 +193,7 @@ export class DreamController
 		if (dream !== null) void this.events.PublishAsync("dream.opened", {});
 	}
 
-	// Opens a Dream, then reveals one specific signal, for resonance and passage-discovery navigation.
+	// Opens a Dream, then reveals one specific signal.
 	public async OpenSignalAsync(dreamId: string, signalId: string): Promise<void>
 	{
 		const dream = this.OpenDream(dreamId);
@@ -449,106 +448,6 @@ export class DreamController
 		this.HandleDreamChange(change);
 	}
 
-	// Adds a resonance capturing the reader's immediate association, without requiring a passage reference.
-	public async AddResonanceAsync(signalId: string, note: string): Promise<void>
-	{
-		const trimmedNote = note.trim();
-
-		if (trimmedNote.length > 0)
-		{
-			const id = await this.gateway.AllocateIdAsync();
-			const timestamp = new Date().toISOString();
-			const resonance: DreamResonance = { id, note: trimmedNote, targets: [], candidates: [], createdAt: timestamp, updatedAt: timestamp };
-			const change = this.store.AddResonance(signalId, resonance);
-			this.HandleDreamChange(change);
-		}
-	}
-
-	// Updates one resonance's note and schedules an autosave.
-	public UpdateResonanceNote(signalId: string, resonanceId: string, note: string): void
-	{
-		const trimmedNote = note.trim();
-
-		if (trimmedNote.length > 0)
-		{
-			const change = this.store.UpdateResonanceNote(signalId, resonanceId, trimmedNote);
-			this.HandleDreamChange(change);
-		}
-	}
-
-	// Removes a resonance from a signal and schedules an autosave.
-	public RemoveResonance(signalId: string, resonanceId: string): void
-	{
-		const change = this.store.RemoveResonance(signalId, resonanceId);
-		this.HandleDreamChange(change);
-	}
-
-	// Arms one resonance to receive the next passage the reader attaches from the reading pane.
-	public RequestAttachResonanceTarget(signalId: string, resonanceId: string): void
-	{
-		this.store.ArmResonanceAttach(signalId, resonanceId);
-	}
-
-	// Cancels an armed resonance-attach request without attaching a passage.
-	public CancelResonanceAttach(): void
-	{
-		this.store.ClearArmedResonanceAttach();
-	}
-
-	// Returns the resonance currently armed to receive an attached passage, or null when none is armed.
-	public GetArmedResonanceAttach(): ArmedResonanceAttach | null
-	{
-		const armed = this.store.GetArmedResonanceAttach();
-
-		return armed;
-	}
-
-	// Removes one attached target from a resonance, retaining the resonance itself.
-	public RemoveResonanceTarget(signalId: string, resonanceId: string, targetId: string): void
-	{
-		const change = this.store.RemoveResonanceTarget(signalId, resonanceId, targetId);
-		this.HandleDreamChange(change);
-	}
-
-	// Scrolls the reading pane to one resonance's attached passage.
-	public JumpToResonanceTarget(signalId: string, resonanceId: string, targetId: string): void
-	{
-		const dream = this.store.GetActiveDream();
-		const signal = dream?.signals.find((candidate) => candidate.id === signalId);
-		const resonance = signal?.resonances.find((candidate) => candidate.id === resonanceId);
-		const target = resonance?.targets.find((candidate) => candidate.id === targetId);
-
-		if (target !== undefined) void this.events.PublishAsync("library.jump-requested", { selection: target.selection });
-	}
-
-	// Supplies per-passage resonance counts for the reading pane without exposing catalogue ownership.
-	public GetResonancePassageCounts(): ReadonlyMap<string, number>
-	{
-		const document = this.library.GetText();
-		let counts: ReadonlyMap<string, number> = new Map<string, number>();
-
-		if (document !== null)
-		{
-			counts = this.store.GetResonancePassageCounts(document);
-		}
-
-		return counts;
-	}
-
-	// Returns the resonances anchored to one displayed passage.
-	public GetResonanceHitsAt(segmentKey: string): readonly ResonanceHit[]
-	{
-		const document = this.library.GetText();
-		let hits: readonly ResonanceHit[] = [];
-
-		if (document !== null)
-		{
-			hits = this.store.GetResonanceHitsAt(document, segmentKey);
-		}
-
-		return hits;
-	}
-
 	// Adds a signal for the given passage selection when it lies within the Dream's source and is not a duplicate.
 	public async AddSignal(selection: TextSelection): Promise<void>
 	{
@@ -571,8 +470,7 @@ export class DreamController
 				sourceRef: selection.locatorStart?.value ?? selection.start.segmentKey,
 				selection,
 				text: selection.selectedText,
-				description: "",
-				resonances: []
+				description: ""
 			};
 			const signals = [...dream.signals, signal];
 
@@ -795,22 +693,6 @@ export class DreamController
 	private HandleSourceExtendRequested(event: ChoraEvents["dream.source-extend-requested"]): void
 	{
 		this.ExtendSource(event.selection);
-	}
-
-	// Attaches the reader's selected passage to the currently armed resonance, if any, and requests a refresh.
-	private async HandleResonanceTargetAttachRequestedAsync(event: ChoraEvents["dream.resonance-target-attach-requested"]): Promise<void>
-	{
-		const armed = this.store.GetArmedResonanceAttach();
-
-		if (armed !== null)
-		{
-			const id = await this.gateway.AllocateIdAsync();
-			const target: ResonanceTarget = { id, workId: event.selection.documentId, selection: event.selection };
-			const change = this.store.AttachResonanceTarget(armed.signalId, armed.resonanceId, target);
-			this.store.ClearArmedResonanceAttach();
-			this.HandleDreamChange(change);
-			if (change !== null) await this.events.PublishAsync("dream.structure-changed", { dreamId: change.dream.id });
-		}
 	}
 
 	// Finds a Dream in the catalogue by identity, or null when it is not present.

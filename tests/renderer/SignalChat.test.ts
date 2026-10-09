@@ -26,7 +26,7 @@ describe("Signal chat", function SignalChatTests()
 		vi.restoreAllMocks();
 	});
 
-	it("starts from the signal icon automatically and preserves the selected description across turns and reopening", async function ChatsAboutSelectedSignalAsync(): Promise<void>
+	it("keeps the dormant signal-chat workflow available without rendering Chat controls", async function ChatsAboutSelectedSignalAsync(): Promise<void>
 	{
 		const sessions = new SessionStore();
 		const dreams = new DreamStore(sessions);
@@ -35,8 +35,8 @@ describe("Signal chat", function SignalChatTests()
 			id: "dream", workId: "republic", dialogue: "Republic", title: "Return", reflection: "My reflections",
 			source: { ...selection, sourceRefs: ["s1"], startSourceRef: "s1", endSourceRef: "s1" },
 			signals: [
-				{ id: "first", text: "abc", description: "First thought", sourceRef: "s1", selection, resonances: [] },
-				{ id: "second", text: "def", description: "My full **second** thought", sourceRef: "s1", selection, resonances: [] }
+				{ id: "first", text: "abc", description: "First thought", sourceRef: "s1", selection },
+				{ id: "second", text: "def", description: "My full **second** thought", sourceRef: "s1", selection }
 			], linkedDreamIds: [], createdAt: "2026-09-07", updatedAt: "2026-09-07"
 		};
 		dreams.Open(dream, false);
@@ -65,9 +65,8 @@ describe("Signal chat", function SignalChatTests()
 		{
 			store.SetDraft("An unsent question");
 			dreams.UpdateSignalDescription("second", "My latest **unsaved** thought");
-			const icon = signals.Root.querySelector<HTMLButtonElement>('[data-signal-chat="second"]');
-			expect(icon?.title).toBe("Chat with the model");
-			icon?.click();
+			expect(signals.Root.querySelector("[data-signal-chat]")).toBeNull();
+			dreamController.ChatWithSignal("second");
 			await vi.waitFor(function Opened(): void
 			{
 				expect(root.querySelector(".chat-signal-focus")?.textContent).toBe("def");
