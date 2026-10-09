@@ -11,7 +11,6 @@
 		"dev:mock": "node scripts/StartMode.mjs mock",
 		"dev:kimi": "node scripts/StartMode.mjs kimi",
 		"dev:relay": "node scripts/StartMode.mjs copilot-relay",
-		"relink-hermeneia": "node scripts/RelinkHermeneia.mjs",
 		"package": "npm run build && electron-forge package",
 		"make": "npm run build && electron-forge make",
 		"build": "npm run build:main && npm run build:preload && npm run build:renderer",
@@ -29,9 +28,7 @@
 		"@milkdown/kit": "^7.22.1",
 		"electron-squirrel-startup": "^1.0.1",
 		"gray-matter": "^4.0.3",
-		"hermeneia-core": "file:../Hermeneia",
-		"lucide": "^1.41.0",
-		"mdast-util-from-markdown": "^2.0.3"
+		"lucide": "^1.41.0"
 	},
 	"devDependencies": {
 		"@electron-forge/cli": "^7.6.0",

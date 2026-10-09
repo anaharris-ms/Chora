@@ -39,6 +39,16 @@ export class LibraryController
 		}
 	}
 
+	// Opens the remembered or default Library text so the reader can select a Dream source.
+	public async OpenPreferredAsync(): Promise<void>
+	{
+		const texts = this.store.GetSnapshot().texts;
+		const preferredId = this.ResolvePreferredWorkId(texts);
+
+		if (preferredId !== null) await this.OpenAsync(preferredId);
+		else this.errors.Report("LibraryController", new Error("The Library is empty."), "No texts are available.");
+	}
+
 	// Opens a work by id and publishes it as the active text.
 	public async OpenAsync(textId: string): Promise<void>
 	{
@@ -85,7 +95,6 @@ export class LibraryController
 		if (!this.AreSelectionsEqual(previous, canonical))
 		{
 			this.store.SetSelection(canonical);
-			void this.events.PublishAsync("library.selection-changed", { textId: snapshot.text?.id ?? "", hasSelection: canonical !== null });
 		}
 	}
 

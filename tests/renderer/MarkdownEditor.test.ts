@@ -8,7 +8,7 @@ import { ChoraEventBus } from "../../src/renderer/core/events/ChoraEventBus.js";
 import type { ChoraEvents } from "../../src/renderer/core/events/ChoraEvents.js";
 import { ParseDreamMarkdown, SerializeDreamMarkdown } from "../../src/main/dreams/DreamMarkdownCodec.js";
 import type { Dream } from "../../src/shared/dreams/DreamTypes.js";
-import { DreamMarkdownDocument } from "../../src/shared/dreams/DreamMarkdownDocument.js";
+import { SignalMarkdownDocument } from "../../src/shared/dreams/SignalMarkdownDocument.js";
 
 // Mounted editors are disposed even when an assertion fails.
 const editors: MarkdownEditor[] = [];
@@ -49,7 +49,7 @@ afterEach(async function CleanupAsync()
 
 describe("MarkdownEditor", function MarkdownEditorTests()
 {
-	it("round trips a whole Dream and rejects damaged protected sections", function ScansDreamMarkdown()
+	it("serializes a complete Signal with resonances and attached passages", function SerializesSignalMarkdown()
 	{
 		const selection = { documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 7 }, selectedText: "κατέβην", locatorStart: null, locatorEnd: null };
 		const dream: Dream = {
@@ -58,32 +58,14 @@ describe("MarkdownEditor", function MarkdownEditorTests()
 			signals: [{ id: "signal", sourceRef: "s1", text: "κατέβην", selection, description: "An observation", resonances: [{ id: "resonance", note: "A connection", targets: [{ id: "target", workId: "republic", selection }], candidates: [], createdAt: "2026-01-01", updatedAt: "2026-01-01" }] }],
 			reflection: "A reflection", linkedDreamIds: ["another"], createdAt: "2026-01-01", updatedAt: "2026-01-01"
 		};
-		const markdown = DreamMarkdownDocument.Serialize(dream);
-		expect(DreamMarkdownDocument.Scan(markdown, dream)).toEqual(dream);
-		const edited = markdown.replace("An observation", "**New observation**").replace("A reflection", "New reflection").replace("A connection", "New connection");
-		const result = DreamMarkdownDocument.Scan(edited, dream);
-		expect(result.signals[0]?.description).toBe("**New observation**");
-		expect(result.signals[0]?.resonances[0]?.note).toBe("New connection");
-		expect(result.reflection).toBe("New reflection");
-		expect(result.source).toEqual(dream.source);
-		expect(result.signals[0]?.resonances[0]?.targets).toEqual(dream.signals[0]?.resonances[0]?.targets);
-		const invalidDocuments = [
-			markdown.replace("chora:description:signal", "chora:description:unknown"),
-			markdown.replace("<!-- chora:end -->", ""),
-			markdown + "\nextra",
-			markdown.replace("> κατέβην", "> changed"),
-			markdown.replace("A connection", ""),
-			markdown.replace("## General Observations", ""),
-			markdown.replace("A reflection", "```\nunfinished"),
-			markdown.replace("A reflection", "<!-- unfinished"),
-			markdown.replace("An observation", "## General Observations"),
-			markdown.replace("<!-- chora:observations -->", "<!-- chora:observations -->\n\n<!-- chora:observations -->"),
-			markdown.replace("<!-- chora:title -->", "<!-- chora:source -->").replace("<!-- chora:source -->\n##", "<!-- chora:title -->\n##")
-		];
-		for (const invalid of invalidDocuments)
-		{
-			expect(function ScanInvalid(): void { DreamMarkdownDocument.Scan(invalid, dream); }).toThrow();
-		}
+		const signal = dream.signals[0]!;
+		const markdown = SignalMarkdownDocument.Serialize(dream, signal);
+		expect(markdown).toContain("# Signal");
+		expect(markdown).toContain("> κατέβην");
+		expect(markdown).toContain("Source: Republic · s1");
+		expect(markdown).toContain("## Observation\n\nAn observation");
+		expect(markdown).toContain("### Resonance\n\nA connection");
+		expect(markdown).toContain("#### Attached Passage: republic · s1");
 	});
 
 	it("renders read-only Markdown safely and updates without publishing edits", async function RendersReadOnlyAsync()

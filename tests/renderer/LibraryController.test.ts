@@ -57,7 +57,7 @@ describe("LibraryController", function LibraryControllerTests()
 		controller = new LibraryController(events, errors, store, new LibraryGateway());
 	});
 
-	it("loads the library and publishes an opened-state notification", async function OpensInitialDocument()
+	it("loads the library and opens the preferred text", async function OpensPreferredText()
 	{
 		let opened = false;
 		events.Subscribe("library.text-opened", () =>
@@ -73,14 +73,9 @@ describe("LibraryController", function LibraryControllerTests()
 		expect(store.GetSnapshot().texts).toEqual([summary]);
 	});
 
-	it("canonicalizes selections and suppresses duplicate selection events", async function CanonicalizesSelection()
+	it("canonicalizes repeated browser selections", async function CanonicalizesSelection()
 	{
-		let changes = 0;
 		await controller.StartAsync();
-		events.Subscribe("library.selection-changed", () =>
-		{
-			changes += 1;
-		});
 		const browserSelection = {
 			documentId: "republic",
 			start: { segmentKey: "s1", offset: 2 },
@@ -96,7 +91,6 @@ describe("LibraryController", function LibraryControllerTests()
 		expect(store.GetSelection()?.selectedText).toBe("cdef\nghi");
 		expect(store.GetSelection()?.locatorStart?.value).toBe("327a");
 		expect(store.GetSelection()?.locatorEnd?.value).toBe("327b");
-		expect(changes).toBe(1);
 	});
 
 	it("rejects selections belonging to another document", async function RejectsWrongDocument()

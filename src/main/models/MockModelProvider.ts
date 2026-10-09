@@ -3,12 +3,20 @@ import { CreateProviderError } from "./ModelProviderError.js";
 
 const MockLatencyMilliseconds = 650;
 
+// Creates deterministic chat or discovery output without external inference.
 function CreateChatResponse(request: ModelRequest): string
 {
-	const selectedText = request.context.mode === "FREE" ? request.userPrompt : request.context.sourcePassage;
-	const normalizedText = selectedText.trim().replace(/\s+/gu, " ");
-	const excerpt = normalizedText.slice(0, 240);
-	const response = `Working from this selected text-state: "${excerpt}". The first useful question is how the passage's movement, delay, or reversal bears on your question.`;
+	const isIdeaDiscovery = request.systemPrompt.includes("IDEA_SIGNAL_DISCOVERY");
+	let response = "{\"matches\":[]}";
+
+	if (!isIdeaDiscovery)
+	{
+		const selectedText = request.context.mode === "FREE" ? request.userPrompt : request.context.sourcePassage;
+		const trimmedText = selectedText.trim();
+		const normalizedText = trimmedText.replace(/\s+/gu, " ");
+		const excerpt = normalizedText.slice(0, 240);
+		response = `Working from this selected text-state: "${excerpt}". The first useful question is how the passage's movement, delay, or reversal bears on your question.`;
+	}
 
 	return response;
 }

@@ -5,6 +5,12 @@
 	color-scheme: dark;
 	--app-background: #0f171d;
 	--panel-background: #10181e;
+	--side-panel-background: #172229;
+	--signal-observation-background: #141e24;
+	--signal-toolbar-background: #111a20;
+	--idea-raised-background: #21323c;
+	--idea-input-background: #111b22;
+	--idea-accent-foreground: #07131b;
 	--dream-background: #10181e;
 	--dream-raised: #172128;
 	--dream-divider: #25343e;
@@ -24,26 +30,25 @@
 :root[data-theme="dark"] .shell,
 :root[data-theme="dark"] .center-panel,
 :root[data-theme="dark"] #readingPane,
-:root[data-theme="dark"] .right-panel,
-:root[data-theme="dark"] .dream-panel,
-:root[data-theme="dark"] .dream-header,
 :root[data-theme="dark"] .chat-form,
-:root[data-theme="dark"] .pattern-item,
 :root[data-theme="dark"] .chat-error {
 	background: var(--dream-background);
 }
 
 :root[data-theme="dark"] .left-panel,
+:root[data-theme="dark"] .right-panel,
 :root[data-theme="dark"] .dream-catalogue,
+:root[data-theme="dark"] .dream-panel,
+:root[data-theme="dark"] .dream-header,
 :root[data-theme="dark"] .chat-panel,
-:root[data-theme="dark"] .pattern-panel,
+:root[data-theme="dark"] .idea-panel,
 :root[data-theme="dark"] .catalogue-group h4,
 :root[data-theme="dark"] .catalogue-group-toggle {
-	background: var(--panel-background);
+	background: var(--side-panel-background);
 }
 
-:root[data-theme="dark"] .activity-rail {
-	background: #202125;
+:root[data-theme="dark"] .catalogue-text-toggle {
+	color: var(--app-text);
 }
 
 :root[data-theme="dark"] .reader-toolbar {
@@ -58,8 +63,7 @@
 :root[data-theme="dark"] .dream-header h2,
 :root[data-theme="dark"] .dream-panel,
 :root[data-theme="dark"] .signal-heading,
-:root[data-theme="dark"] .chat-header h2,
-:root[data-theme="dark"] .pattern-header h2 {
+:root[data-theme="dark"] .chat-header h2 {
 	color: var(--app-text);
 }
 
@@ -73,8 +77,7 @@
 
 :root[data-theme="dark"] .catalogue-item,
 :root[data-theme="dark"] .catalogue-item strong,
-:root[data-theme="dark"] .chat-catalogue-item,
-:root[data-theme="dark"] .pattern-item {
+:root[data-theme="dark"] .chat-catalogue-item {
 	color: var(--app-text);
 }
 
@@ -82,9 +85,7 @@
 :root[data-theme="dark"] .catalogue-item:focus-visible,
 :root[data-theme="dark"] .catalogue-item.selected,
 :root[data-theme="dark"] .chat-catalogue-item:hover,
-:root[data-theme="dark"] .chat-catalogue-item:focus-visible,
-:root[data-theme="dark"] .pattern-item:hover,
-:root[data-theme="dark"] .pattern-item.selected {
+:root[data-theme="dark"] .chat-catalogue-item:focus-visible {
 	background: var(--dream-selection);
 	color: #ffffff;
 }
@@ -93,8 +94,7 @@
 :root[data-theme="dark"] .signal-item,
 :root[data-theme="dark"] .dream-header,
 :root[data-theme="dark"] .catalogue-header,
-:root[data-theme="dark"] .chat-header,
-:root[data-theme="dark"] .pattern-scope {
+:root[data-theme="dark"] .chat-header {
 	border-color: var(--panel-border);
 }
 
@@ -106,8 +106,7 @@
 
 :root[data-theme="dark"] .dream-search,
 :root[data-theme="dark"] .catalogue-header-button,
-:root[data-theme="dark"] .left-tab-panel .catalogue-header-button,
-:root[data-theme="dark"] .dream-title-field input {
+:root[data-theme="dark"] .left-tab-panel .catalogue-header-button {
 	border-color: var(--panel-border);
 	background: var(--dream-raised);
 	color: var(--app-text);
@@ -125,21 +124,18 @@
 :root[data-theme="dark"] .dream-section h3,
 :root[data-theme="dark"] .dream-field > span,
 :root[data-theme="dark"] .dream-source-meta,
-:root[data-theme="dark"] .dream-help,
 :root[data-theme="dark"] .dream-empty,
-:root[data-theme="dark"] .dream-title-field span,
-:root[data-theme="dark"] .signal-remove,
 :root[data-theme="dark"] .catalogue-location,
 :root[data-theme="dark"] .chat-catalogue-item span,
 :root[data-theme="dark"] .chat-catalogue-empty,
-:root[data-theme="dark"] .pattern-locator,
-:root[data-theme="dark"] .pattern-forms,
-:root[data-theme="dark"] .pattern-observation,
-:root[data-theme="dark"] .pattern-header span,
-:root[data-theme="dark"] .pattern-context span,
-:root[data-theme="dark"] .pattern-empty,
-:root[data-theme="dark"] .source-notice {
+:root[data-theme="dark"] .idea-panel span,
+:root[data-theme="dark"] .idea-panel p {
 	color: var(--dream-muted);
+}
+
+:root[data-theme="dark"] .idea-delete-button,
+:root[data-theme="dark"] .idea-error {
+	color: var(--danger);
 }
 
 :root[data-theme="dark"] .catalogue-group-toggle,
@@ -183,8 +179,7 @@
 }
 
 :root[data-theme="dark"] .resonance-target-remove,
-:root[data-theme="dark"] .resonance-review-signal,
-:root[data-theme="dark"] .resonance-review-targets {
+:root[data-theme="dark"] .resonance-review-signal {
 	color: var(--dream-muted);
 }
 

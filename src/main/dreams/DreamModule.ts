@@ -24,6 +24,14 @@ export class DreamModule extends ApplicationModule
 		this.ipcController = new DreamIpcController(this.service);
 	}
 
+	// Exposes the authoritative Dream use cases to other main-process modules.
+	public GetService(): DreamService
+	{
+		const service = this.service;
+
+		return service;
+	}
+
 	// Registers the Dreams IPC boundary.
 	protected StartCore(): void
 	{

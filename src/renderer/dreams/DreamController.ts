@@ -7,14 +7,14 @@ import { ErrorManager } from "../core/diagnostics/RendererErrorManager.js";
 import { LibraryStore } from "../library/LibraryStore.js";
 import { CompareSelections, IsSelectionWithin, MergeSelections } from "../../shared/library/SelectionService.js";
 import { CreateDreamSourceSelection } from "./SourceSelection.js";
-import { DreamMarkdownDocument } from "../../shared/dreams/DreamMarkdownDocument.js";
+import { DreamMarkdownExport } from "../../shared/dreams/DreamMarkdownExport.js";
 import { DreamGateway } from "./DreamGateway.js";
-import { DreamStore, type ArmedResonanceAttach, type DreamChange, type DreamSaveState, type ResonanceHit } from "./DreamStore.js";
+import { DreamStore, type ArmedResonanceAttach, type DreamChange, type DreamSaveState, type DreamTab, type ResonanceHit } from "./DreamStore.js";
 
 // Fields of a SourceSelection derived from a document span, independent of the reader's raw selection.
 type DerivedSourceFields = Pick<SourceSelection, "sourceRefs" | "startSourceRef" | "endSourceRef" | "division">;
 
-// A division of a document (e.g. "Book IV"), used to place a Dream in the catalogue.
+// A division of a document (e.g. "Book 4"), used to place a Dream in the catalogue.
 type DreamDivision = { kind: string; value: string };
 
 // A group of catalogue Dreams presented under one division heading, or one ungrouped list when no division data exists.
@@ -162,11 +162,7 @@ export class DreamController
 	{
 		const document = this.library.GetText();
 
-		if (this.store.GetMarkdownDraft() !== null)
-		{
-			this.errors.Report("DreamController", new Error("Markdown editing is open."), "Save or cancel Markdown editing before opening another Dream.");
-		}
-		else if (document !== null)
+		if (document !== null)
 		{
 			const timestamp = new Date().toISOString();
 			const derivedFields = this.DeriveSourceFields(document, selection.start, selection.end, null);
@@ -218,21 +214,54 @@ export class DreamController
 		return dream;
 	}
 
+	// Returns ordered descriptors for the open Dream editor tabs.
+	public GetOpenTabs(): readonly DreamTab[]
+	{
+		const tabs = this.store.GetOpenTabs();
+
+		return tabs;
+	}
+
+	// Remembers the selected Signal within one Dream tab.
+	public RememberSelectedSignal(dreamId: string, signalId: string | null): void
+	{
+		this.store.SetSelectedSignal(dreamId, signalId);
+	}
+
+	// Returns the Signal selection remembered within one Dream tab.
+	public GetSelectedSignal(dreamId: string): string | null
+	{
+		const signalId = this.store.GetSelectedSignal(dreamId);
+
+		return signalId;
+	}
+
+	// Remembers the selected inner editor tab for one Dream.
+	public RememberEditorTab(dreamId: string, tabId: string): void
+	{
+		this.store.SetEditorTab(dreamId, tabId);
+	}
+
+	// Returns the selected inner editor tab remembered for one Dream.
+	public GetEditorTab(dreamId: string): string
+	{
+		const tabId = this.store.GetEditorTab(dreamId);
+
+		return tabId;
+	}
+
 	// Opens a Dream from the catalogue into the active editing session, without publishing that it opened.
 	private OpenDream(dreamId: string): Dream | null
 	{
 		const dream = this.FindCatalogueDream(dreamId);
 		let opened: Dream | null = null;
 
-		if (this.store.GetMarkdownDraft() !== null)
+		if (dream !== null)
 		{
-			this.errors.Report("DreamController", new Error("Markdown editing is open."), "Save or cancel Markdown editing before opening another Dream.");
-		}
-		else if (dream !== null)
-		{
-			if (this.library.GetText()?.id !== dream.workId) void this.events.PublishAsync("library.text-open-requested", { textId: dream.workId });
 			opened = structuredClone(dream);
 			this.store.Open(opened, false);
+			const navigation = this.NavigateToDreamSourceAsync(opened);
+			void navigation;
 		}
 
 		return opened;
@@ -244,12 +273,54 @@ export class DreamController
 		this.CancelAutosave();
 		if (this.store.GetIsDirty()) await this.SaveAsync();
 
-		if (!this.store.GetIsDirty() && this.store.GetMarkdownError() === null)
+		if (!this.store.GetIsDirty())
 		{
 			this.store.Close();
-			await this.events.PublishAsync("dream.closed", {});
+			const next = this.store.GetActiveDream();
+			if (next === null) await this.events.PublishAsync("dream.closed", {});
+			else
+			{
+				await this.NavigateToDreamSourceAsync(next);
+				await this.events.PublishAsync("dream.opened", {});
+			}
 			await this.RefreshAsync();
 		}
+	}
+
+	// Activates one open Dream tab through the normal open workflow.
+	public ActivateTab(dreamId: string): void
+	{
+		const dream = this.store.ActivateTab(dreamId);
+		if (dream !== null)
+		{
+			const navigation = this.NavigateToDreamSourceAsync(dream);
+			void navigation;
+			void this.events.PublishAsync("dream.opened", {});
+		}
+	}
+
+	// Activates and closes one Dream tab, saving it first when necessary.
+	public async CloseTabAsync(dreamId: string): Promise<void>
+	{
+		const activeId = this.store.GetActiveDream()?.id;
+		let canClose = activeId === dreamId;
+		if (!canClose)
+		{
+			const dream = this.store.ActivateTab(dreamId);
+			canClose = dream !== null;
+			if (dream !== null) await this.NavigateToDreamSourceAsync(dream);
+		}
+		if (canClose) await this.CloseAsync();
+	}
+
+	// Opens the owning text and moves the reader to the Dream's source passage.
+	private async NavigateToDreamSourceAsync(dream: Dream): Promise<void>
+	{
+		if (this.library.GetText()?.id !== dream.workId)
+		{
+			await this.events.PublishAsync("library.text-open-requested", { textId: dream.workId });
+		}
+		await this.events.PublishAsync("library.jump-requested", { selection: dream.source });
 	}
 
 	// Deletes the active Dream after any in-flight save completes.
@@ -311,14 +382,39 @@ export class DreamController
 		}
 	}
 
-	// Requests a conversation about the whole Dream, independent of any specific signal.
-	public ChatWithDream(): void
+	// Saves current Dream edits before opening the unified Add to Idea workflow.
+	public async AddSignalToIdeaAsync(signalId: string): Promise<void>
 	{
 		const dream = this.store.GetActiveDream();
-		if (dream !== null)
+		const ownsSignal = dream !== null && this.HasSignal(dream, signalId);
+
+		if (dream !== null && ownsSignal)
 		{
-			void this.events.PublishAsync("chat.dream-requested", { dreamId: dream.id });
+			await this.SaveAsync();
+			const saveSucceeded = this.store.GetSaveState() !== "error";
+
+			if (saveSucceeded)
+			{
+				const event = { dreamId: dream.id, signalId };
+				await this.events.PublishAsync("idea.add-signal-requested", event);
+			}
 		}
+	}
+
+	// Determines whether one Dream owns the submitted Signal identity.
+	private HasSignal(dream: Dream, signalId: string): boolean
+	{
+		let ownsSignal = false;
+
+		for (const signal of dream.signals)
+		{
+			if (signal.id === signalId)
+			{
+				ownsSignal = true;
+			}
+		}
+
+		return ownsSignal;
 	}
 
 	// Updates the active Dream title and schedules an autosave.
@@ -483,7 +579,15 @@ export class DreamController
 			signals.sort(this.CompareSignalsBySelection.bind(this, document));
 			const change = this.store.ReplaceSignals(signals);
 			this.HandleDreamChange(change);
-			if (change !== null) void this.events.PublishAsync("dream.signal-added", { dreamId: change.dream.id, signalId: signal.id });
+
+			if (change !== null)
+			{
+				const event = {
+					dreamId: change.dream.id,
+					signalId: signal.id
+				};
+				await this.events.PublishAsync("dream.signal-added", event);
+			}
 		}
 	}
 
@@ -523,46 +627,19 @@ export class DreamController
 		if (this.store.GetIsDirty() && this.store.GetSaveState() !== "error") this.ScheduleAutosave();
 	}
 
-	public GetMarkdown(): string
+	public async CopyDreamAsMarkdownAsync(): Promise<void>
 	{
 		const dream = this.store.GetActiveDream();
-		const draft = this.store.GetMarkdownDraft();
-		const markdown = draft ?? (dream === null ? "" : DreamMarkdownDocument.Serialize(dream));
-		return markdown;
-	}
 
-	public BeginMarkdownEditing(): void
-	{
-		this.store.BeginMarkdownEditing();
-	}
-
-	public UpdateMarkdownDraft(markdown: string): void
-	{
-		this.store.UpdateMarkdownDraft(markdown);
-		this.ScheduleAutosave();
-		this.SetSaveState("idle");
-	}
-
-	public async FinishMarkdownEditingAsync(): Promise<boolean>
-	{
-		await this.SaveAsync();
-		const success = !this.store.GetIsDirty() && this.store.GetSaveState() !== "error" && this.store.GetMarkdownError() === null;
-		if (success) this.store.EndMarkdownEditing();
-		return success;
-	}
-
-	public CancelMarkdownEditing(): void
-	{
-		this.CancelAutosave();
-		this.store.EndMarkdownEditing();
-		this.SetSaveState("idle");
-		if (this.store.GetIsDirty()) this.ScheduleAutosave();
-	}
-
-	public async CopyMarkdownAsync(): Promise<void>
-	{
-		const markdown = this.GetMarkdown();
-		await this.gateway.CopyAsync(markdown);
+		if (dream === null)
+		{
+			throw new Error("The active Dream is no longer available.");
+		}
+		else
+		{
+			const markdown = DreamMarkdownExport.Serialize(dream);
+			await this.gateway.CopyAsync(markdown);
+		}
 	}
 
 	// Returns the reader's visible Dream catalogue, grouped by division when division data is available.
@@ -620,22 +697,9 @@ export class DreamController
 
 	private async PerformSaveAsync(): Promise<void>
 	{
-		let valid = true;
-		try
-		{
-			const changed = this.store.ApplyMarkdownDraft();
-			const dream = this.store.GetActiveDream();
-			if (changed && dream !== null) void this.events.PublishAsync("dream.structure-changed", { dreamId: dream.id });
-		}
-		catch (error)
-		{
-			valid = false;
-			this.SetSaveState("error");
-			this.errors.Error("DreamController", error instanceof Error ? error.message : String(error), error);
-		}
 		const activeDream = this.store.GetActiveDream();
 
-		if (valid && activeDream !== null && !this.isDeleting)
+		if (activeDream !== null && !this.isDeleting)
 		{
 			const revision = this.store.GetRevision();
 			const dream = structuredClone(activeDream);
@@ -869,14 +933,11 @@ export class DreamController
 		return result;
 	}
 
-	// Formats a division as a reader-facing heading (e.g. "Book IV").
+	// Formats a division as a reader-facing heading (e.g. "Book 4").
 	private FormatDivisionLabel(kind: string, value: string): string
 	{
 		const kindLabel = `${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;
-		const romanNumbers = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
-		const numericIndex = Number.parseInt(value, 10) - 1;
-		const valueLabel = kind.toLowerCase() === "book" ? romanNumbers[numericIndex] ?? value : value;
-		const label = `${kindLabel} ${valueLabel}`;
+		const label = `${kindLabel} ${value}`;
 
 		return label;
 	}

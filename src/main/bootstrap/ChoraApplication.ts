@@ -2,7 +2,7 @@ import { Menu } from "electron";
 import { ChatModule } from "../chat/ChatModule.js";
 import { DreamModule } from "../dreams/DreamModule.js";
 import { LibraryModule } from "../library/LibraryModule.js";
-import { PatternModule } from "../patterns/PatternModule.js";
+import { IdeaModule } from "../ideas/IdeaModule.js";
 import { CreateApplicationMenu } from "../shell/ApplicationMenu.js";
 import { LoadEnvironmentFiles } from "./Environment.js";
 import { ChoraWindowManager } from "./WindowManager.js";
@@ -18,10 +18,10 @@ export class ChoraApplication
 	private readonly lookup = new LookupIpcController(this.lookupService, this.windows);
 // Owns access to the bundled Library and its IPC boundary.
 	private readonly library = new LibraryModule();
-// Owns the configured read-only Hermeneia Pattern boundary.
-	private readonly patterns = new PatternModule(this.library.GetService());
 // Owns Dream persistence for this application run.
 	private readonly dreams: DreamModule;
+// Owns work-scoped Signal-grounded Ideas.
+	private readonly ideas: IdeaModule;
 // Owns chat session state and its IPC boundary.
 	private readonly chat: ChatModule;
 	// Owns the application-level startup and shutdown transition.
@@ -31,6 +31,8 @@ export class ChoraApplication
 	public constructor(documentsPath: string)
 	{
 		this.dreams = new DreamModule(documentsPath);
+		const dreamService = this.dreams.GetService();
+		this.ideas = new IdeaModule(documentsPath, dreamService);
 		this.chat = new ChatModule(this.library.GetService(), documentsPath);
 	}
 
@@ -93,7 +95,7 @@ export class ChoraApplication
 	{
 		this.library.Start();
 		this.lookup.Register();
-		this.patterns.Start();
+		this.ideas.Start();
 		this.dreams.Start();
 		this.chat.Start();
 	}
@@ -103,7 +105,7 @@ export class ChoraApplication
 		this.lookup.Unregister();
 		this.chat.Stop();
 		this.dreams.Stop();
-		this.patterns.Stop();
+		this.ideas.Stop();
 		this.library.Stop();
 	}
 }

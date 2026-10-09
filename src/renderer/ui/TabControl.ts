@@ -19,7 +19,7 @@ export class TabControl
 	private readonly clickHandler = this.HandleClick.bind(this);
 
 	// Mounts each panel once and initially selects the first.
-	public constructor(panels: readonly TabPanel[], label: string)
+	public constructor(panels: readonly TabPanel[], label: string, private readonly selectionChanged?: (id: string) => void)
 	{
 		const ids = new Set<string>();
 		for (const panel of panels)
@@ -76,7 +76,17 @@ export class TabControl
 				button.tabIndex = selected ? 0 : -1;
 			}
 		}
-		this.Panels[this.selectedIndex]?.OnSelected();
+		const selected = this.Panels[this.selectedIndex];
+		selected?.OnSelected();
+		if (selected !== undefined) this.selectionChanged?.(selected.Id);
+	}
+
+	// Returns the identifier of the selected panel, or null when the control is empty.
+	public GetSelectedId(): string | null
+	{
+		const id = this.Panels[this.selectedIndex]?.Id ?? null;
+
+		return id;
 	}
 
 	// Releases listeners and all owned panels.

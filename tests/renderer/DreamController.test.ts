@@ -101,6 +101,79 @@ describe("DreamController", function DreamControllerTests()
 		expect(dream?.signals.map((signal) => signal.text)).toEqual(["cd", "hi"]);
 	});
 
+	it("does not complete Signal creation before the reveal workflow finishes", async function AwaitsSignalRevealAsync()
+	{
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s2", offset: 4 }, selectedText: "bcdef\nghij", locatorStart: null, locatorEnd: null });
+		let releaseReveal: (() => void) | null = null;
+		let markStarted: (() => void) | null = null;
+		const revealReleased = new Promise<void>(function CaptureRelease(resolve): void
+		{
+			releaseReveal = resolve;
+		});
+		const revealStarted = new Promise<void>(function CaptureStart(resolve): void
+		{
+			markStarted = resolve;
+		});
+
+		// Blocks the panel-side reveal until the test explicitly releases it.
+		async function HandleSignalAddedAsync(): Promise<void>
+		{
+			if (markStarted !== null)
+			{
+				markStarted();
+			}
+
+			await revealReleased;
+		}
+
+		const unsubscribe = events.Subscribe("dream.signal-added", HandleSignalAddedAsync);
+		const addition = controller.AddSignal({ documentId: "republic", start: { segmentKey: "s1", offset: 2 }, end: { segmentKey: "s1", offset: 4 }, selectedText: "cd", locatorStart: null, locatorEnd: null });
+		await revealStarted;
+		let additionFinished = false;
+
+		// Observes completion without releasing the blocked reveal.
+		function MarkAdditionFinished(): void
+		{
+			additionFinished = true;
+		}
+
+		const completion = addition.then(MarkAdditionFinished);
+		await Promise.resolve();
+		expect(additionFinished).toBe(false);
+
+		if (releaseReveal === null)
+		{
+			throw new Error("Signal reveal did not start");
+		}
+
+		releaseReveal();
+		await completion;
+		expect(additionFinished).toBe(true);
+		unsubscribe();
+	});
+
+	it("saves the active Dream before opening Add to Idea", async function SavesBeforeIdeaActions()
+	{
+		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s2", offset: 4 }, selectedText: "bcdef\nghij", locatorStart: null, locatorEnd: null });
+		await controller.AddSignal({ documentId: "republic", start: { segmentKey: "s1", offset: 2 }, end: { segmentKey: "s1", offset: 4 }, selectedText: "cd", locatorStart: null, locatorEnd: null });
+		const signalId = store.GetActiveDream()?.signals[0]?.id;
+
+		if (signalId === undefined)
+		{
+			throw new Error("Missing Signal");
+		}
+
+		const add = vi.fn();
+		const unsubscribeAddition = events.Subscribe("idea.add-signal-requested", add);
+
+		await controller.AddSignalToIdeaAsync(signalId);
+
+		const dreamId = store.GetActiveDream()?.id;
+		expect(window.chora.SaveDream).toHaveBeenCalled();
+		expect(add).toHaveBeenCalledWith({ dreamId, signalId });
+		unsubscribeAddition();
+	});
+
 	it("does not expose mutable active Dream state", async function ProtectsActiveDreamState()
 	{
 		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "bc", locatorStart: null, locatorEnd: null });
@@ -216,105 +289,6 @@ describe("DreamController", function DreamControllerTests()
 		expect(store.GetIsDirty()).toBe(false);
 		expect(store.GetSaveState()).toBe("idle");
 		expect(saved[0]?.reflection).toBe("Retain this draft.");
-	});
-
-	it("blocks every save and close for missing Markdown sections until repaired", async function BlocksInvalidMarkdownAsync()
-	{
-		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
-		controller.BeginMarkdownEditing();
-		const original = controller.GetMarkdown();
-		const invalid = original.replace("## General Observations", "");
-		controller.UpdateMarkdownDraft(invalid);
-		await vi.advanceTimersByTimeAsync(800);
-		await controller.SaveAsync();
-		await controller.CloseAsync();
-		expect(window.chora.SaveDream).not.toHaveBeenCalled();
-		expect(store.GetActiveDream()).not.toBeNull();
-		expect(store.GetMarkdownDraft()).toBe(invalid);
-		expect(store.GetMarkdownError()).toContain("protected");
-		const restored = new DreamStore(new SessionStore());
-		expect(restored.GetMarkdownDraft()).toBe(invalid);
-		controller.UpdateMarkdownDraft(original.replace("<!-- chora:observations -->", "<!-- chora:observations -->\n\nNew **observation**"));
-		expect(await controller.FinishMarkdownEditingAsync()).toBe(true);
-		expect(saved[0]?.reflection).toBe("New **observation**");
-		expect(store.GetMarkdownDraft()).toBeNull();
-	});
-
-	it("retains raw edits when disk saving fails and cancels without applying invalid text", async function RetainsFailedMarkdownAsync()
-	{
-		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
-		controller.BeginMarkdownEditing();
-		const original = controller.GetMarkdown();
-		controller.UpdateMarkdownDraft(original);
-		vi.mocked(window.chora.SaveDream).mockRejectedValueOnce(new Error("Disk unavailable"));
-		expect(await controller.FinishMarkdownEditingAsync()).toBe(false);
-		expect(store.GetMarkdownDraft()).toBe(original);
-		controller.UpdateMarkdownDraft("invalid");
-		controller.CancelMarkdownEditing();
-		expect(store.GetMarkdownDraft()).toBeNull();
-		expect(store.GetActiveDream()?.reflection).toBe("");
-	});
-
-	it("refreshes an untouched Markdown draft after a source passage extension", async function SavesExtendedSourceWithMarkdownAsync()
-	{
-		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "bc", locatorStart: null, locatorEnd: null });
-		controller.BeginMarkdownEditing();
-		controller.ExtendSource({ documentId: "republic", start: { segmentKey: "s2", offset: 1 }, end: { segmentKey: "s2", offset: 4 }, selectedText: "hij", locatorStart: null, locatorEnd: null });
-		await vi.advanceTimersByTimeAsync(800);
-		expect(store.GetSaveState()).toBe("idle");
-		expect(store.GetMarkdownError()).toBeNull();
-		expect(saved[0]?.source.selectedText).toBe("bcdef\nghij");
-		expect(store.GetMarkdownDraft()).toContain("> bcdef\n> ghij");
-	});
-
-	it("derives Markdown validation directly from the current draft", async function ClearsValidationAsync()
-	{
-		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
-		controller.BeginMarkdownEditing();
-		const original = controller.GetMarkdown();
-		controller.UpdateMarkdownDraft(original.replace("> abc", "> changed"));
-		await controller.SaveAsync();
-		expect(store.GetMarkdownError()).toContain("protected");
-		controller.UpdateMarkdownDraft(original);
-		expect(store.GetMarkdownError()).toBeNull();
-		await vi.advanceTimersByTimeAsync(800);
-		expect(store.GetSaveState()).toBe("idle");
-		controller.UpdateMarkdownDraft("invalid");
-		controller.CancelMarkdownEditing();
-		expect(store.GetMarkdownError()).toBeNull();
-	});
-
-	it("recovers from a conflict when raw edits are undone without losing the extended passage", async function UndoesConflictingDraftAsync()
-	{
-		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "bc", locatorStart: null, locatorEnd: null });
-		controller.BeginMarkdownEditing();
-		const original = controller.GetMarkdown();
-		controller.UpdateMarkdownDraft(original.replace("# Untitled Dream", "# Raw title"));
-		controller.ExtendSource({ documentId: "republic", start: { segmentKey: "s2", offset: 1 }, end: { segmentKey: "s2", offset: 4 }, selectedText: "hij", locatorStart: null, locatorEnd: null });
-		await controller.SaveAsync();
-		expect(store.GetMarkdownError()).toContain("another view");
-		controller.UpdateMarkdownDraft(original);
-		expect(store.GetMarkdownError()).toBeNull();
-		await controller.SaveAsync();
-		expect(saved[0]?.source.selectedText).toBe("bcdef\nghij");
-		expect(saved[0]?.title).toBe("");
-	});
-
-	it("rejects stale raw drafts without overwriting edits from another tab", async function RejectsStaleDraftAsync()
-	{
-		await controller.Create({ documentId: "republic", start: { segmentKey: "s1", offset: 0 }, end: { segmentKey: "s1", offset: 3 }, selectedText: "abc", locatorStart: null, locatorEnd: null });
-		controller.BeginMarkdownEditing();
-		const original = controller.GetMarkdown();
-		controller.UpdateMarkdownDraft(original.replace("# Untitled Dream", "# Raw title"));
-		controller.UpdateExegesis("New work in another tab");
-		await controller.SaveAsync();
-		expect(window.chora.SaveDream).not.toHaveBeenCalled();
-		expect(store.GetMarkdownError()).toContain("another view");
-		expect(store.GetActiveDream()?.reflection).toBe("New work in another tab");
-		expect(store.GetMarkdownDraft()).toContain("# Raw title");
-		controller.CancelMarkdownEditing();
-		await controller.SaveAsync();
-		expect(saved[0]?.reflection).toBe("New work in another tab");
 	});
 
 	it("deletes the active Dream and refreshes the catalogue", async function DeletesDream()

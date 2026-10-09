@@ -47,9 +47,10 @@ export class DreamLibrary
 		const normalizedRecord = this.CreateSaveRecord(record, existing);
 		const dream = new Dream(normalizedRecord);
 		const existingPersistence = this.records.get(dream.GetId());
-		const persistence = this.CreatePersistenceRecord(dream, existingPersistence);
+		const persistence = this.CreatePersistenceRecord(dream);
+		const previousFilePath = existingPersistence?.filePath ?? null;
 
-		await this.repository.SaveAsync(persistence);
+		await this.repository.SaveAsync(persistence, previousFilePath);
 		this.dreams.set(dream.GetId(), dream);
 		this.records.set(dream.GetId(), persistence);
 		const saved = dream.ToRecord();
@@ -111,10 +112,10 @@ export class DreamLibrary
 	}
 
 	// Creates the persistence record owned by this library.
-	private CreatePersistenceRecord(dream: Dream, existing: DreamPersistenceRecord | undefined): DreamPersistenceRecord
+	private CreatePersistenceRecord(dream: Dream): DreamPersistenceRecord
 	{
 		const record = dream.ToRecord();
-		const filePath = existing !== undefined ? existing.filePath : this.CreatePrimaryPath(record);
+		const filePath = this.CreatePrimaryPath(record);
 		const persistence: DreamPersistenceRecord = {
 			dream: record,
 			filePath

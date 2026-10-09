@@ -2,14 +2,6 @@ import type { Dream, DreamSignal, DreamResonance, ResonanceTarget, SourceSelecti
 import { SessionStore } from "../core/session/SessionStore.js";
 import type { LibraryText } from "../../shared/library/LibraryTypes.js";
 import type { TextSelection } from "../../shared/library/SelectionTypes.js";
-import { DreamMarkdownDocument } from "../../shared/dreams/DreamMarkdownDocument.js";
-
-interface DreamMarkdownDraft
-{
-	markdown: string;
-	appliedMarkdown: string;
-	baseline: Dream;
-}
 
 // A resonance anchored to a displayed passage, with enough context to return to its originating signal.
 export interface ResonanceHit
@@ -49,7 +41,25 @@ interface DreamSessionSnapshot
 	dream: Dream;
 	// Whether the active Dream had unsaved changes at the time of the snapshot.
 	isDirty: boolean;
-	markdownDraft?: DreamMarkdownDraft | null;
+	revision?: number;
+	saveState?: DreamSaveState;
+	selectedSignalId?: string | null;
+	editorTabId?: string;
+}
+
+// Persisted collection of open Dream tabs and their active identity.
+interface DreamTabsSnapshot
+{
+	readonly tabs: DreamSessionSnapshot[];
+	readonly activeDreamId: string | null;
+}
+
+// Readonly Dream tab descriptor exposed to the editor strip.
+export interface DreamTab
+{
+	readonly dreamId: string;
+	readonly title: string;
+	readonly isDirty: boolean;
 }
 
 // Result of a named mutation to the active Dream.
@@ -78,6 +88,12 @@ export class DreamStore
 	private revision = 0;
 	// Lifecycle of the active Dream's most recent save attempt.
 	private saveState: DreamSaveState = "idle";
+	// Ordered per-Dream editing sessions represented by the editor tab strip.
+	private openTabs: DreamSessionSnapshot[] = [];
+	// Signal selected in the active Dream session.
+	private selectedSignalId: string | null = null;
+	// Inner editor tab selected in the active Dream session.
+	private editorTabId = "signals";
 	// Pending session-persistence timer, or null when nothing is scheduled.
 	private persistenceTimer: ReturnType<typeof setTimeout> | null = null;
 	// Catalogue search query entered by the reader.
@@ -86,8 +102,6 @@ export class DreamStore
 	private passageFilter: DreamPassageFilter | null = null;
 	// Signal and resonance currently armed to receive an attached passage, or null when none is armed.
 	private armedResonanceAttach: ArmedResonanceAttach | null = null;
-	private markdownDraft: DreamMarkdownDraft | null = null;
-
 	// Returns a snapshot of the active source restriction.
 	public GetPassageFilter(): DreamPassageFilter | null
 	{
@@ -104,14 +118,70 @@ export class DreamStore
 	// Restores the active Dream editing session from a prior application run.
 	public constructor(private readonly sessions: SessionStore)
 	{
-		const snapshot = this.sessions.Load<DreamSessionSnapshot>(DreamStore.SessionKey);
+		const snapshot = this.sessions.Load<DreamSessionSnapshot | DreamTabsSnapshot>(DreamStore.SessionKey);
 
 		if (snapshot !== null)
 		{
-			this.SetActiveDream(snapshot.dream);
-			this.isDirty = snapshot.isDirty;
-			this.markdownDraft = snapshot.markdownDraft ?? null;
+			if ("tabs" in snapshot)
+			{
+				this.openTabs = structuredClone(snapshot.tabs);
+				const active = this.openTabs.find(function FindActive(tab): boolean { return tab.dream.id === snapshot.activeDreamId; }) ?? this.openTabs[0] ?? null;
+				if (active !== null) this.RestoreTab(active);
+			}
+			else
+			{
+				this.openTabs = [structuredClone(snapshot)];
+				this.RestoreTab(snapshot);
+			}
 		}
+	}
+
+	// Returns ordered descriptors for every open Dream editor tab.
+	public GetOpenTabs(): readonly DreamTab[]
+	{
+		this.CaptureActiveTab();
+		const tabs = this.openTabs.map(function CreateDescriptor(tab): DreamTab
+		{
+			return { dreamId: tab.dream.id, title: tab.dream.title || "Untitled", isDirty: tab.isDirty };
+		});
+
+		return structuredClone(tabs);
+	}
+
+	// Remembers the selected Signal for one open Dream tab.
+	public SetSelectedSignal(dreamId: string, signalId: string | null): void
+	{
+		if (this.activeDream?.id === dreamId) this.selectedSignalId = signalId;
+		const tab = this.openTabs.find(function FindTab(candidate): boolean { return candidate.dream.id === dreamId; });
+		if (tab !== undefined) tab.selectedSignalId = signalId;
+		this.Persist();
+	}
+
+	// Returns the selected Signal remembered for one open Dream tab.
+	public GetSelectedSignal(dreamId: string): string | null
+	{
+		const tab = this.openTabs.find(function FindTab(candidate): boolean { return candidate.dream.id === dreamId; });
+		const signalId = this.activeDream?.id === dreamId ? this.selectedSignalId : tab?.selectedSignalId ?? null;
+
+		return signalId;
+	}
+
+	// Remembers the selected inner editor tab for one open Dream.
+	public SetEditorTab(dreamId: string, tabId: string): void
+	{
+		if (this.activeDream?.id === dreamId) this.editorTabId = tabId;
+		const tab = this.openTabs.find(function FindTab(candidate): boolean { return candidate.dream.id === dreamId; });
+		if (tab !== undefined) tab.editorTabId = tabId;
+		this.Persist();
+	}
+
+	// Returns the selected inner editor tab for one open Dream.
+	public GetEditorTab(dreamId: string): string
+	{
+		const tab = this.openTabs.find(function FindTab(candidate): boolean { return candidate.dream.id === dreamId; });
+		const tabId = this.activeDream?.id === dreamId ? this.editorTabId : tab?.editorTabId ?? "signals";
+
+		return tabId;
 	}
 
 	// Returns the current catalogue search query.
@@ -431,96 +501,8 @@ export class DreamStore
 	// Returns whether the active Dream has unsaved changes.
 	public GetIsDirty(): boolean
 	{
-		const dirty = this.isDirty || (this.markdownDraft !== null && this.markdownDraft.markdown !== this.markdownDraft.appliedMarkdown);
+		const dirty = this.isDirty;
 		return dirty;
-	}
-
-	public GetMarkdownDraft(): string | null
-	{
-		const markdown = this.markdownDraft?.markdown ?? null;
-		return markdown;
-	}
-
-	public BeginMarkdownEditing(): void
-	{
-		if (this.activeDream !== null && this.markdownDraft === null)
-		{
-			const markdown = DreamMarkdownDocument.Serialize(this.activeDream);
-			this.markdownDraft = { markdown, appliedMarkdown: markdown, baseline: structuredClone(this.activeDream) };
-			this.Persist();
-		}
-	}
-
-	public UpdateMarkdownDraft(markdown: string): void
-	{
-		if (this.markdownDraft !== null)
-		{
-			this.markdownDraft.markdown = markdown;
-			this.revision += 1;
-			this.saveState = "idle";
-			this.Persist();
-		}
-	}
-
-	public GetMarkdownError(): string | null
-	{
-		let message: string | null = null;
-		try
-		{
-			this.ScanMarkdownDraft();
-		}
-		catch (error)
-		{
-			message = error instanceof Error ? error.message : "Invalid Dream Markdown.";
-		}
-		return message;
-	}
-
-	public ApplyMarkdownDraft(): boolean
-	{
-		let changed = false;
-		const scanned = this.ScanMarkdownDraft();
-		if (scanned !== null && this.markdownDraft !== null)
-		{
-			if (JSON.stringify(scanned) !== JSON.stringify(this.activeDream))
-			{
-				this.SetActiveDream(scanned);
-				this.isDirty = true;
-				this.revision += 1;
-				changed = true;
-			}
-			this.markdownDraft.baseline = structuredClone(scanned);
-			this.markdownDraft.appliedMarkdown = this.markdownDraft.markdown;
-			this.Persist();
-		}
-		return changed;
-	}
-
-	public EndMarkdownEditing(): void
-	{
-		this.markdownDraft = null;
-		this.saveState = "idle";
-		this.Persist();
-	}
-
-	private ScanMarkdownDraft(): Dream | null
-	{
-		let result: Dream | null = null;
-		if (this.markdownDraft !== null)
-		{
-			if (this.activeDream !== null && this.markdownDraft.markdown === this.markdownDraft.appliedMarkdown && JSON.stringify(this.activeDream) !== JSON.stringify(this.markdownDraft.baseline))
-			{
-				const markdown = DreamMarkdownDocument.Serialize(this.activeDream);
-				this.markdownDraft = { markdown, appliedMarkdown: markdown, baseline: structuredClone(this.activeDream) };
-				this.Persist();
-			}
-			if (JSON.stringify(this.activeDream) !== JSON.stringify(this.markdownDraft.baseline))
-			{
-				throw new Error("The Dream changed in another view. Copy your Markdown draft before cancelling and reopening the editor.");
-			}
-			result = DreamMarkdownDocument.Scan(this.markdownDraft.markdown, this.markdownDraft.baseline);
-		}
-		return result;
 	}
 
 	// Returns the lifecycle of the active Dream's most recent save attempt.
@@ -544,25 +526,57 @@ export class DreamStore
 	// Opens a Dream for editing and records whether it starts with unsaved changes.
 	public Open(dream: Dream, isDirty: boolean): void
 	{
-		if (this.markdownDraft !== null) throw new Error("Save or cancel Markdown editing before opening another Dream.");
 		this.CancelPersistence();
-		this.SetActiveDream(structuredClone(dream));
-		this.isDirty = isDirty;
-		this.revision = 0;
-		this.saveState = "idle";
+		this.CaptureActiveTab();
+		const existing = this.openTabs.find(function FindTab(tab): boolean { return tab.dream.id === dream.id; });
+		if (existing !== undefined)
+		{
+			this.RestoreTab(existing);
+		}
+		else
+		{
+			const snapshot: DreamSessionSnapshot = { dream: structuredClone(dream), isDirty, revision: 0, saveState: "idle", selectedSignalId: null, editorTabId: "signals" };
+			this.openTabs.push(snapshot);
+			this.RestoreTab(snapshot);
+		}
 		this.Persist();
+	}
+
+	// Activates an already open Dream tab without replacing its editing session.
+	public ActivateTab(dreamId: string): Dream | null
+	{
+		this.CancelPersistence();
+		this.CaptureActiveTab();
+		const tab = this.openTabs.find(function FindTab(candidate): boolean { return candidate.dream.id === dreamId; });
+		if (tab !== undefined)
+		{
+			this.RestoreTab(tab);
+			this.Persist();
+		}
+		const dream = tab === undefined ? null : structuredClone(tab.dream);
+
+		return dream;
 	}
 
 	// Closes the active Dream editing session.
 	public Close(): void
 	{
 		this.CancelPersistence();
-		this.markdownDraft = null;
-		this.SetActiveDream(null);
-		this.isDirty = false;
-		this.revision = 0;
-		this.saveState = "idle";
-		this.sessions.Remove(DreamStore.SessionKey);
+		const activeId = this.activeDream?.id;
+		const activeIndex = this.openTabs.findIndex(function FindActive(tab): boolean { return tab.dream.id === activeId; });
+		if (activeIndex >= 0) this.openTabs.splice(activeIndex, 1);
+		const nextIndex = Math.min(activeIndex, this.openTabs.length - 1);
+		const next = nextIndex >= 0 ? this.openTabs[nextIndex] ?? null : null;
+		if (next === null)
+		{
+			this.ClearActiveTab();
+			this.sessions.Remove(DreamStore.SessionKey);
+		}
+		else
+		{
+			this.RestoreTab(next);
+			this.Persist();
+		}
 	}
 
 	// Updates the active Dream title and records one authoritative state change.
@@ -652,7 +666,6 @@ export class DreamStore
 		{
 			this.CancelPersistence();
 			this.SetActiveDream(structuredClone(dream));
-			if (this.markdownDraft !== null) this.markdownDraft.baseline = structuredClone(dream);
 			this.isDirty = false;
 			this.saveState = "idle";
 			this.Persist();
@@ -675,6 +688,48 @@ export class DreamStore
 	private SetActiveDream(dream: Dream | null): void
 	{
 		this.activeDream = dream;
+	}
+
+	// Captures the mutable active fields into their ordered tab snapshot.
+	private CaptureActiveTab(): void
+	{
+		const dream = this.activeDream;
+		if (dream !== null)
+		{
+			const snapshot: DreamSessionSnapshot = {
+				dream: structuredClone(dream),
+				isDirty: this.isDirty,
+				revision: this.revision,
+				saveState: this.saveState,
+				selectedSignalId: this.selectedSignalId,
+				editorTabId: this.editorTabId
+			};
+			const index = this.openTabs.findIndex(function FindTab(tab): boolean { return tab.dream.id === dream.id; });
+			if (index >= 0) this.openTabs[index] = snapshot;
+			else this.openTabs.push(snapshot);
+		}
+	}
+
+	// Restores one tab snapshot into the active Dream fields.
+	private RestoreTab(snapshot: DreamSessionSnapshot): void
+	{
+		this.SetActiveDream(structuredClone(snapshot.dream));
+		this.isDirty = snapshot.isDirty;
+		this.revision = snapshot.revision ?? 0;
+		this.saveState = snapshot.saveState ?? "idle";
+		this.selectedSignalId = snapshot.selectedSignalId ?? null;
+		this.editorTabId = snapshot.editorTabId === "exegesis" ? "exegesis" : "signals";
+	}
+
+	// Clears every active field after the final Dream tab closes.
+	private ClearActiveTab(): void
+	{
+		this.SetActiveDream(null);
+		this.isDirty = false;
+		this.revision = 0;
+		this.saveState = "idle";
+		this.selectedSignalId = null;
+		this.editorTabId = "signals";
 	}
 
 	// Returns whether the given Dream matches the reader's normalized search query.
@@ -772,7 +827,9 @@ export class DreamStore
 	{
 		if (this.activeDream !== null)
 		{
-			this.sessions.Save(DreamStore.SessionKey, { dream: this.activeDream, isDirty: this.isDirty, markdownDraft: this.markdownDraft });
+			this.CaptureActiveTab();
+			const snapshot: DreamTabsSnapshot = { tabs: structuredClone(this.openTabs), activeDreamId: this.activeDream.id };
+			this.sessions.Save(DreamStore.SessionKey, snapshot);
 		}
 	}
 }

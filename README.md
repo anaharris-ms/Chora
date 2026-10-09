@@ -11,6 +11,7 @@ Chora has three independent panels:
 - **ChatPanel** — a session conversation whose context follows the active Dream or visible passage.
 - **DocumentPanel** — the source text, exact locators, selection, and reading controls.
 - **DreamPanel** — capture and editing of reader-authored Dreams.
+- **Ideas** — work-scoped interpretations connected to reader-authored Signals.
 
 A Dream contains an immutable source passage, zero or more manually selected signals, an optional title, and open-form exegesis. It has no required metadata, automatic signals, tags, folders, or automatic links.
 
@@ -24,9 +25,11 @@ A Dream contains an immutable source passage, zero or more manually selected sig
 
 The source passage remains immutable inside the editor. To extend it, select more source text in the Document panel and choose **Add to Dream**. Signal descriptions are optional, multiple signals retain source order, and a newly added signal is brought into view automatically. Dreams may be deleted explicitly from the editor.
 
-Signals and Exegesis use a shared Milkdown editor with bold, italic, lists, quotations, links, and undo/redo. Formatting is saved as Markdown in the existing description and reflection fields. Editors retain their contents and undo history when switching tabs or collapsing a signal, and the lower-right grip resizes the editing area vertically. Links are editable but do not navigate from the editor; remote images are displayed as alt text without fetching them.
+Signals and Exegesis use a shared Milkdown editor with bold, italic, lists, quotations, links, and undo/redo. Formatting is saved as Markdown in the existing description and reflection fields. Editors retain their contents and undo history when switching tabs or collapsing a signal, and the lower-right grip resizes the editing area vertically. Links are editable but do not navigate from the editor; remote images are displayed as alt text without fetching them. The Dream action menu can copy the complete Dream as Markdown, including its source passage, Signals, observations, resonances, attached passages, and General Observations.
 
 Each signal has a **Chat with the model** icon. It opens Chat focused on that signal without sending a message. The signal's words appear above the conversation, and the model receives its complete description, including current unsaved edits, with the Dream's source as context. That focus stays with the conversation when navigating away and when reopening a saved chat. Selecting a different signal starts a new conversation while preserving the unsent draft; selecting the same signal returns to the current conversation. A response in progress must finish before switching signals.
+
+Each Signal has one **Add to Idea…** action. Ideas use the same catalogue-and-editor structure as Dreams: the left tab contains a searchable flat list with a new-Idea action, while the selected Idea opens in the shared editor pane. Idea rows show their connected Signal count and are not grouped by Book. The editor contains only the title, description, and one Signals list. **Find Signals** asks the configured model to identify up to five strong connections among existing reader-authored, observed Signals and displays a concise rationale for each result. **+ Add Signal** opens a separate searchable work-wide Signal browser where several existing Signals can be inspected in the established Signal panel or connected directly without leaving the browser. A new Idea may begin empty; its first connected Signal becomes the internal immutable origin, but the interface presents every connected Signal together without origin or related-evidence terminology. Starting from **Add to Idea…** uses the normal Ideas catalogue to select an existing Idea or create a new Idea with that Signal already connected. A durable Idea requires at least three Signals.
 
 ## Chat context
 
@@ -65,6 +68,8 @@ Prompts/          model system prompts
 See [CODING_STANDARDS.md](CODING_STANDARDS.md) and [AGENTS.md](AGENTS.md) before changing the code.
 
 ## Development
+
+Chora opens the preferred Library text at launch in a permanent three-column workspace: Dreams Explorer, Dream editor, and source reader. With no Dream open, the middle editor shows Open Dream and Create Dream actions. The Explorer uses a compact selected-text-to-Book-to-Dream tree with each Dream's Stephanus range on the same line as its title. Opening a Dream adds it to a persistent editor tab strip; switching tabs restores that Dream's editor navigation and follows its source in the reader, while closing a dirty tab saves it before removal.
 
 Prerequisites: Node.js 24 or later and npm.
 

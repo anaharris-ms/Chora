@@ -18,15 +18,16 @@ import { DocumentPanel } from "../library/DocumentPanel.js";
 import { DreamPanel } from "../dreams/DreamPanel.js";
 import { DreamPassagePanel } from "../dreams/DreamPassagePanel.js";
 import { SessionStore } from "../core/session/SessionStore.js";
-import { PatternController } from "../patterns/PatternController.js";
-import { PatternGateway } from "../patterns/PatternGateway.js";
-import { PatternPanel } from "../patterns/PatternPanel.js";
-import { PatternStore } from "../patterns/PatternStore.js";
+import { IdeaController } from "../ideas/IdeaController.js";
+import { IdeaGateway } from "../ideas/IdeaGateway.js";
+import { IdeaPanel } from "../ideas/IdeaPanel.js";
+import { IdeaStore } from "../ideas/IdeaStore.js";
 import { ReadingSettingsStore, type ReadingFont } from "../core/settings/ReadingSettingsStore.js";
 import { LookupStore } from "../library/lookup/LookupStore.js";
 import { LookupGateway } from "../library/lookup/LookupGateway.js";
 import { LookupController } from "../library/lookup/LookupController.js";
 import { LookupPanel } from "../library/lookup/LookupPanel.js";
+import { CloseActionMenusOutside as CloseOpenActionMenus } from "../ui/ActionMenus.js";
 
 type ResizablePane = "left" | "dream";
 
@@ -40,12 +41,15 @@ export class ChoraApplication
 	// Bound window/root listeners, stored so the same reference can later be removed.
 	private readonly keyDownHandler = (event: KeyboardEvent): void => void this.HandleKeyDownAsync(event);
 	private readonly focusHandler = (): void => this.HandleWindowFocus();
-	private readonly blurHandler = (): void => void this.dreams.SaveAsync();
+	private readonly blurHandler = (): void => this.HandleWindowBlur();
 	private readonly leftViewClickHandler = (event: Event): void => this.HandleLeftViewClick(event);
 	private readonly settingsChangeHandler = (event: Event): void => this.HandleSettingsChange(event);
 	private readonly panelResizePointerDownHandler = (event: PointerEvent): void => this.HandlePanelResizePointerDown(event);
 	private readonly panelResizePointerMoveHandler = (event: PointerEvent): void => this.HandlePanelResizePointerMove(event);
 	private readonly panelResizePointerUpHandler = (): void => this.StopPanelResize();
+	private readonly actionMenuDismissHandler = (event: Event): void => this.CloseActionMenusOutside(event.target as Node | null);
+	// Rebalances workspace columns when the native window changes size.
+	private readonly windowResizeHandler = (): void => this.NormalizePanelWidths();
 	// Which pane is being dragged, or null when no resize is in progress.
 	private activeResizablePane: ResizablePane | null = null;
 	// Pointer position and pane width captured when a resize drag begins.
@@ -75,10 +79,16 @@ export class ChoraApplication
 	private readonly chatStore = new ChatStore(this.sessions);
 	private readonly chatGateway = new ChatGateway();
 	private readonly chat = new ChatController(this.events, this.errors, this.contexts, this.chatStore, this.chatGateway);
-	// Patterns: Hermeneia pattern state, IPC client, and workflow coordinator.
-	private readonly patternStore = new PatternStore();
-	private readonly patternGateway = new PatternGateway();
-	private readonly patterns = new PatternController(this.events, this.patternStore, this.patternGateway, this.libraryStore);
+	// Owns renderer-side Idea state.
+	private readonly ideaStore = new IdeaStore();
+	// Provides the stateless Idea IPC client.
+	private readonly ideaGateway = new IdeaGateway();
+	// Coordinates Signal-first Idea workflows.
+	private readonly ideas = new IdeaController(this.events, this.errors, this.ideaStore, this.ideaGateway);
+	// Dream editor instance receiving contextual navigation state from Ideas.
+	private dreamEditorPanel: DreamPanel | null = null;
+	// Whether the active Dream is a temporary Signal preview opened from an Idea.
+	private isIdeaSignalPreview = false;
 
 	// Owns reading appearance and font settings.
 	private readonly settings = new ReadingSettingsStore();
@@ -102,27 +112,33 @@ export class ChoraApplication
 		{
 			this.isStarted = true;
 			this.settings.Apply();
-			this.root.innerHTML = `<main class="shell"><aside class="left-panel"><nav class="workspace-views" aria-label="Workspace views"><button class="activity-button button-control selected" data-left-view="dreams" type="button" aria-pressed="true">Dreams</button><button class="activity-button button-control" data-left-view="chat" type="button" aria-pressed="false">Chat</button><button class="activity-button button-control" data-left-view="patterns" type="button" aria-pressed="false">Patterns</button></nav><div class="left-view" data-chat-panel hidden></div><div class="left-view" data-pattern-panel hidden></div><div class="left-view" data-dream-catalogue-panel></div></aside><section class="center-panel" data-document-panel></section><aside class="right-panel" data-dream-panel hidden></aside><div class="panel-resize-handle" data-resize-pane="left" role="separator" aria-label="Resize left workspace" aria-orientation="vertical"></div><div class="panel-resize-handle" data-resize-pane="dream" role="separator" aria-label="Resize Dream editor" aria-orientation="vertical"></div></main><div class="application-error" data-error-output hidden></div>`;
+			this.root.innerHTML = `<main class="shell dream-open"><aside class="left-panel"><nav class="workspace-views" aria-label="Workspace views"><button class="activity-button button-control selected" data-left-view="dreams" type="button" aria-pressed="true">Dreams</button><button class="activity-button button-control" data-left-view="chat" type="button" aria-pressed="false">Chat</button><button class="activity-button button-control" data-left-view="ideas" type="button" aria-pressed="false">Ideas</button></nav><div class="left-view" data-chat-panel hidden></div><div class="left-view" data-idea-panel hidden></div><div class="left-view" data-dream-catalogue-panel></div></aside><section class="center-panel" data-document-panel></section><aside class="right-panel" data-editor-panel><section class="editor-empty-state workspace-welcome" data-editor-empty aria-labelledby="editor-empty-heading"><h1 id="editor-empty-heading">Dreams</h1><div class="workspace-welcome-actions"><button class="button-control" data-editor-open-dream type="button">Open Dream</button><button class="button-control" data-editor-create-dream type="button">Create Dream</button></div></section><div data-dream-panel hidden></div><div data-idea-editor-panel hidden></div></aside><div class="panel-resize-handle" data-resize-pane="left" role="separator" tabindex="0" aria-label="Resize left workspace" aria-orientation="vertical"></div><div class="panel-resize-handle" data-resize-pane="dream" role="separator" tabindex="0" aria-label="Resize editor" aria-orientation="vertical"></div></main><div class="application-error" data-error-output hidden></div>`;
 			const chatRoot = this.RequireElement("[data-chat-panel]");
 			const readerColumn = this.RequireElement("[data-document-panel]");
 			readerColumn.removeAttribute("data-document-panel");
 			readerColumn.innerHTML = `<div class="reader-workspace"><section class="document-panel" data-document-panel></section><section data-lookup-panel aria-label="Dictionary" hidden></section></div>`;
-			const patternRoot = this.RequireElement("[data-pattern-panel]");
+			const ideaRoot = this.RequireElement("[data-idea-panel]");
 			const dreamCatalogueRoot = this.RequireElement("[data-dream-catalogue-panel]");
 			const documentRoot = this.RequireElement("[data-document-panel]");
 			const dreamRoot = this.RequireElement("[data-dream-panel]");
+			const ideaEditorRoot = this.RequireElement("[data-idea-editor-panel]");
 			const lookupRoot = this.RequireElement("[data-lookup-panel]");
 			this.disposables.push(new LookupPanel(lookupRoot, this.events, this.lookupStore, this.lookup));
 			this.disposables.push(new ChatPanel(chatRoot, this.events, this.chatStore, this.chat));
-			this.disposables.push(new PatternPanel(patternRoot, this.events, this.patternStore, this.patterns));
+			const ideaCatalogue = new IdeaPanel(ideaRoot, this.events, this.ideaStore, this.ideas, this.dreamStore, "catalogue");
+			const ideaEditor = new IdeaPanel(ideaEditorRoot, this.events, this.ideaStore, this.ideas, this.dreamStore, "editor");
+			this.disposables.push(ideaCatalogue, ideaEditor);
 			this.disposables.push(new DocumentPanel(documentRoot, this.events, this.libraryStore, this.library, this.settings));
 			const passagePanel = new DreamPassagePanel(documentRoot, this.events, this.libraryStore, this.dreams);
 			this.disposables.push(passagePanel);
 			this.disposables.push(new DreamPanel(dreamCatalogueRoot, this.events, this.dreamStore, this.dreams, this.libraryStore, "catalogue"));
-			this.disposables.push(new DreamPanel(dreamRoot, this.events, this.dreamStore, this.dreams, this.libraryStore, "editor"));
+			this.dreamEditorPanel = new DreamPanel(dreamRoot, this.events, this.dreamStore, this.dreams, this.libraryStore, "editor");
+			this.disposables.push(this.dreamEditorPanel);
 			this.root.addEventListener("click", this.leftViewClickHandler);
 			this.root.addEventListener("change", this.settingsChangeHandler);
 			this.root.addEventListener("pointerdown", this.panelResizePointerDownHandler);
+			this.root.addEventListener("pointerdown", this.actionMenuDismissHandler);
+			this.root.addEventListener("focusin", this.actionMenuDismissHandler);
 			this.RegisterApplicationEvents();
 			await this.lookup.StartAsync();
 			await this.dreams.StartAsync();
@@ -146,11 +162,14 @@ export class ChoraApplication
 			this.root.removeEventListener("click", this.leftViewClickHandler);
 			this.root.removeEventListener("change", this.settingsChangeHandler);
 			this.root.removeEventListener("pointerdown", this.panelResizePointerDownHandler);
+			this.root.removeEventListener("pointerdown", this.actionMenuDismissHandler);
+			this.root.removeEventListener("focusin", this.actionMenuDismissHandler);
 			window.removeEventListener("pointermove", this.panelResizePointerMoveHandler);
 			window.removeEventListener("pointerup", this.panelResizePointerUpHandler);
 			window.removeEventListener("keydown", this.keyDownHandler);
 			window.removeEventListener("focus", this.focusHandler);
 			window.removeEventListener("blur", this.blurHandler);
+			window.removeEventListener("resize", this.windowResizeHandler);
 			this.disposables.length = 0;
 			this.externalSubscriptions.length = 0;
 		}
@@ -164,15 +183,26 @@ export class ChoraApplication
 		const dreamClosed = this.events.Subscribe("dream.closed", this.HandleDreamClosed.bind(this));
 		const passageFiltered = this.events.Subscribe("dream.passage-filter-changed", this.HandlePassageFilterChanged.bind(this));
 		this.externalSubscriptions.push(passageFiltered);
+		const dreamsFocusRequested = this.events.Subscribe("workspace.dreams-focus-requested", this.HandleDreamsFocusRequested.bind(this));
+		this.externalSubscriptions.push(dreamsFocusRequested);
 		const errorReported = this.events.Subscribe("error.reported", this.HandleErrorReported.bind(this));
 		const textOpened = this.events.Subscribe("library.text-opened", this.HandleTextOpened.bind(this));
-		const focusChanged = this.events.Subscribe("library.focus-changed", this.HandleFocusChanged.bind(this));
-		this.externalSubscriptions.push(dreamOpened, dreamClosed, errorReported, textOpened, focusChanged);
+		const ideaAddSignalHandler = this.HandleIdeaAddSignalRequested.bind(this);
+		const ideaSignalViewHandler = this.HandleIdeaSignalViewRequestedAsync.bind(this);
+		const ideaReturnHandler = this.HandleIdeaReturnRequested.bind(this);
+		const ideasChangedHandler = this.HandleIdeasChanged.bind(this);
+		const ideaAddSignalRequested = this.events.Subscribe("idea.add-signal-requested", ideaAddSignalHandler);
+		const ideaSignalViewRequested = this.events.Subscribe("idea.signal-view-requested", ideaSignalViewHandler);
+		const ideaReturnRequested = this.events.Subscribe("idea.return-requested", ideaReturnHandler);
+		const ideasChanged = this.events.Subscribe("ideas.changed", ideasChangedHandler);
+		this.externalSubscriptions.push(dreamOpened, dreamClosed, errorReported, textOpened, ideaAddSignalRequested, ideaSignalViewRequested, ideaReturnRequested, ideasChanged);
 		this.externalSubscriptions.push(this.libraryGateway.SubscribeToSelection(this.HandleTextSelected.bind(this)));
 		this.externalSubscriptions.push(this.libraryGateway.SubscribeToExternalText(this.HandleExternalTextLoaded.bind(this)));
 		window.addEventListener("keydown", this.keyDownHandler);
 		window.addEventListener("focus", this.focusHandler);
 		window.addEventListener("blur", this.blurHandler);
+		window.addEventListener("resize", this.windowResizeHandler);
+		this.NormalizePanelWidths();
 	}
 
 	// Reveals the active conversation and focuses its composer without scrolling the reading pane.
@@ -186,8 +216,11 @@ export class ChoraApplication
 	// Reveals the Dream editor when a Dream is opened.
 	private HandleDreamOpened(): void
 	{
-		this.SetDreamOpen(true);
-		this.SetLeftView("dreams");
+		this.ShowEditorPanel("dream");
+		if (!this.isIdeaSignalPreview)
+		{
+			this.SetLeftView("dreams");
+		}
 	}
 
 	// Reveals passage-filtered Dreams without opening an editor or navigating the text.
@@ -200,10 +233,44 @@ export class ChoraApplication
 		}
 	}
 
+	// Reveals the Dreams Explorer and places keyboard focus in its search field.
+	private HandleDreamsFocusRequested(): void
+	{
+		this.SetLeftView("dreams");
+		const search = this.root.querySelector<HTMLInputElement>("[data-dream-search]");
+		search?.focus();
+	}
+
 	// Hides the Dream editor when the active Dream is closed.
 	private HandleDreamClosed(): void
 	{
-		this.SetDreamOpen(false);
+		this.ClearIdeaSignalPreview();
+		const editor = this.ideaStore.GetDraft() === null
+			? null
+			: "idea";
+		this.ShowEditorPanel(editor);
+	}
+
+	// Reveals the Idea editor after catalogue selection or creation.
+	private HandleIdeasChanged(): void
+	{
+		const draft = this.ideaStore.GetDraft();
+		const pendingReference = this.ideaStore.GetPendingAddReference();
+
+		if (draft !== null && pendingReference === null)
+		{
+			this.ShowEditorPanel("idea");
+		}
+		else if (draft === null)
+		{
+			this.ClearIdeaSignalPreview();
+			const ideaEditor = this.root.querySelector<HTMLElement>("[data-idea-editor-panel]");
+
+			if (ideaEditor !== null && !ideaEditor.hasAttribute("hidden"))
+			{
+				this.ShowEditorPanel(null);
+			}
+		}
 	}
 
 	// Surfaces a reported error in the application error banner.
@@ -212,15 +279,60 @@ export class ChoraApplication
 		this.ShowError(error.userMessage ?? error.message);
 	}
 
-	// Loads external patterns after a Library text establishes their document identity.
+	// Loads durable Ideas after a Library text establishes their work identity.
 	private async HandleTextOpened(): Promise<void>
 	{
 		const text = this.libraryStore.GetText();
 		if (text !== null)
 		{
-			this.patterns.SetDocumentId(text.id);
-			await this.patterns.LoadAsync(text.id);
+			await this.ideas.LoadAsync(text.id);
 		}
+	}
+
+	// Opens the unified select-or-create Ideas collection for one existing Signal.
+	private HandleIdeaAddSignalRequested(event: ChoraEvents["idea.add-signal-requested"]): void
+	{
+		const reference = {
+			dreamId: event.dreamId,
+			signalId: event.signalId
+		};
+		this.ideas.BeginAddToIdea(reference);
+		this.SetLeftView("ideas");
+	}
+
+	// Opens an Idea-referenced Signal in the real Dream editor while preserving Ideas and the reader.
+	private async HandleIdeaSignalViewRequestedAsync(event: ChoraEvents["idea.signal-view-requested"]): Promise<void>
+	{
+		this.isIdeaSignalPreview = true;
+		this.dreamEditorPanel?.SetIdeaReturnAvailable(true);
+		try
+		{
+			await this.dreams.OpenSignalAsync(event.dreamId, event.signalId);
+			this.SetLeftView("ideas");
+		}
+		catch (error)
+		{
+			this.ClearIdeaSignalPreview();
+			throw error;
+		}
+	}
+
+	// Restores the active Idea without rebuilding its discovery results.
+	private HandleIdeaReturnRequested(): void
+	{
+		if (this.isIdeaSignalPreview && this.ideaStore.GetDraft() !== null)
+		{
+			this.ClearIdeaSignalPreview();
+			this.ShowEditorPanel("idea");
+			this.SetLeftView("ideas");
+		}
+	}
+
+	// Clears contextual Idea-preview navigation from the Dream header.
+	private ClearIdeaSignalPreview(): void
+	{
+		this.isIdeaSignalPreview = false;
+		this.dreamEditorPanel?.SetIdeaReturnAvailable(false);
 	}
 
 	// Opens a text selected in the main process's application menu or dock.
@@ -241,6 +353,19 @@ export class ChoraApplication
 		if (this.dreamStore.GetActiveDream() === null) void this.dreams.RefreshAsync();
 	}
 
+	// Closes transient menus and saves pending work when the native window loses focus.
+	private HandleWindowBlur(): void
+	{
+		this.CloseActionMenusOutside(null);
+		void this.dreams.SaveAsync();
+	}
+
+	// Closes every open action menu except the one containing the new pointer or focus target.
+	private CloseActionMenusOutside(target: Node | null): void
+	{
+		CloseOpenActionMenus(this.root, target);
+	}
+
 	// Displays a message in the application-wide error banner.
 	private ShowError(message: string): void
 	{
@@ -253,11 +378,14 @@ export class ChoraApplication
 		}
 	}
 
-	// Shows or hides the Dream editor pane.
-	private SetDreamOpen(isOpen: boolean): void
+	// Shows one feature editor in the shared right pane.
+	private ShowEditorPanel(editor: "dream" | "idea" | null): void
 	{
-		this.root.querySelector(".shell")?.classList.toggle("dream-open", isOpen);
-		this.root.querySelector<HTMLElement>("[data-dream-panel]")?.toggleAttribute("hidden", !isOpen);
+		this.root.querySelector(".shell")?.classList.add("dream-open");
+		this.root.querySelector<HTMLElement>("[data-editor-panel]")?.removeAttribute("hidden");
+		this.root.querySelector<HTMLElement>("[data-editor-empty]")?.toggleAttribute("hidden", editor !== null);
+		this.root.querySelector<HTMLElement>("[data-dream-panel]")?.toggleAttribute("hidden", editor !== "dream");
+		this.root.querySelector<HTMLElement>("[data-idea-editor-panel]")?.toggleAttribute("hidden", editor !== "idea");
 	}
 
 	// Begins tracking a pane-resize drag started from a resize handle.
@@ -271,6 +399,7 @@ export class ChoraApplication
 		if ((pane === "left" || pane === "dream") && shell !== null && panel !== null)
 		{
 			event.preventDefault();
+			handle?.classList.add("is-active");
 			this.activeResizablePane = pane;
 			this.resizeStartX = event.clientX;
 			this.resizeStartWidth = panel.getBoundingClientRect().width;
@@ -292,7 +421,10 @@ export class ChoraApplication
 			const delta = event.clientX - this.resizeStartX;
 			const leftWidth = leftPanel.getBoundingClientRect().width;
 			const isDreamOpen = shell.classList.contains("dream-open");
-			const minimumReaderWidth = 320;
+			const compactLayout = shellWidth <= 760;
+			const minimumLeftWidth = compactLayout ? 170 : 220;
+			const minimumDreamWidth = compactLayout ? 240 : 300;
+			const minimumReaderWidth = compactLayout ? 220 : 320;
 			let width = this.resizeStartWidth + delta;
 
 			if (this.activeResizablePane === "left")
@@ -304,17 +436,40 @@ export class ChoraApplication
 				else
 				{
 					shell.classList.remove("left-collapsed");
-					const maximumWidth = shellWidth - minimumReaderWidth - (isDreamOpen ? 300 : 0);
-					const clampedWidth = Math.max(220, Math.min(width, maximumWidth));
+					const maximumWidth = shellWidth - minimumReaderWidth - (isDreamOpen ? minimumDreamWidth : 0);
+					const clampedWidth = Math.max(minimumLeftWidth, Math.min(width, maximumWidth));
 					shell.style.setProperty("--left-pane-width", `${clampedWidth}px`);
 				}
 			}
 			else
 			{
 				const maximumWidth = shellWidth - leftWidth - minimumReaderWidth;
-				width = Math.max(300, Math.min(width, maximumWidth));
+				width = Math.max(minimumDreamWidth, Math.min(width, maximumWidth));
 				shell.style.setProperty("--dream-pane-width", `${width}px`);
 			}
+		}
+	}
+
+	// Keeps all three workspace columns visible after a native-window resize.
+	private NormalizePanelWidths(): void
+	{
+		const shell = this.root.querySelector<HTMLElement>(".shell");
+		const leftPanel = this.root.querySelector<HTMLElement>(".left-panel");
+		const dreamPanel = this.root.querySelector<HTMLElement>(".right-panel");
+
+		if (shell !== null && leftPanel !== null && dreamPanel !== null && !shell.classList.contains("left-collapsed"))
+		{
+			const shellWidth = shell.getBoundingClientRect().width;
+			const compactLayout = shellWidth <= 760;
+			const minimumLeftWidth = compactLayout ? 170 : 220;
+			const minimumDreamWidth = compactLayout ? 240 : 300;
+			const minimumReaderWidth = compactLayout ? 220 : 320;
+			const maximumLeftWidth = shellWidth - minimumDreamWidth - minimumReaderWidth;
+			const leftWidth = Math.max(minimumLeftWidth, Math.min(leftPanel.getBoundingClientRect().width, maximumLeftWidth));
+			const maximumDreamWidth = shellWidth - leftWidth - minimumReaderWidth;
+			const dreamWidth = Math.max(minimumDreamWidth, Math.min(dreamPanel.getBoundingClientRect().width, maximumDreamWidth));
+			shell.style.setProperty("--left-pane-width", `${leftWidth}px`);
+			shell.style.setProperty("--dream-pane-width", `${dreamWidth}px`);
 		}
 	}
 
@@ -333,6 +488,8 @@ export class ChoraApplication
 		window.removeEventListener("pointermove", this.panelResizePointerMoveHandler);
 		window.removeEventListener("pointerup", this.panelResizePointerUpHandler);
 		shell?.classList.remove("is-resizing");
+		const handles = this.root.querySelectorAll<HTMLElement>(".panel-resize-handle.is-active");
+		for (const handle of Array.from(handles)) handle.classList.remove("is-active");
 	}
 
 	// Routes clicks on the activity rail, font stepper, and appearance toggle to their workflows.
@@ -342,6 +499,8 @@ export class ChoraApplication
 		const appearanceButton = target?.closest<HTMLElement>("[data-toggle-appearance]");
 		const fontStep = target?.closest<HTMLElement>("[data-font-size]")?.dataset.fontSize;
 		const view = target?.closest<HTMLElement>("[data-left-view]")?.dataset.leftView;
+		const openDream = target?.closest("[data-editor-open-dream]");
+		const createDream = target?.closest("[data-editor-create-dream]");
 
 		if (appearanceButton != null)
 		{
@@ -353,7 +512,10 @@ export class ChoraApplication
 			this.ChangeFontSize(Number.parseInt(fontStep, 10));
 		}
 
-		if (view === "chat" || view === "patterns" || view === "dreams")
+		if (openDream !== null && openDream !== undefined) this.HandleDreamsFocusRequested();
+		if (createDream !== null && createDream !== undefined) void this.dreams.CreateFromCurrentSelection();
+
+		if (view === "chat" || view === "ideas" || view === "dreams")
 		{
 			this.root.querySelector(".shell")?.classList.remove("left-collapsed");
 			this.SetLeftView(view);
@@ -374,14 +536,14 @@ export class ChoraApplication
 	}
 
 	// Shows the requested left view and hides the others.
-	private SetLeftView(view: "chat" | "patterns" | "dreams"): void
+	private SetLeftView(view: "chat" | "ideas" | "dreams"): void
 	{
 		const chatView = this.root.querySelector<HTMLElement>("[data-chat-panel]");
-		const patternView = this.root.querySelector<HTMLElement>("[data-pattern-panel]");
+		const ideaView = this.root.querySelector<HTMLElement>("[data-idea-panel]");
 		const dreamView = this.root.querySelector<HTMLElement>("[data-dream-catalogue-panel]");
 		const buttons = this.root.querySelectorAll<HTMLElement>(".activity-button[data-left-view]");
 		chatView?.toggleAttribute("hidden", view !== "chat");
-		patternView?.toggleAttribute("hidden", view !== "patterns");
+		ideaView?.toggleAttribute("hidden", view !== "ideas");
 		dreamView?.toggleAttribute("hidden", view !== "dreams");
 		for (const button of Array.from(buttons))
 		{
@@ -399,29 +561,21 @@ export class ChoraApplication
 		if (value !== null) value.textContent = String(this.settings.GetFontSize());
 	}
 
-	// Toggles light/dark appearance and reflects the new state on the toggle button.
+	// Toggles light/dark appearance and reflects the current theme in reading settings.
 	private ToggleAppearance(): void
 	{
 		this.settings.ToggleAppearance();
 		const button = this.root.querySelector<HTMLElement>("[data-toggle-appearance]");
+		const value = button?.querySelector<HTMLElement>("[data-appearance-value]");
 		const isLight = this.settings.GetAppearance() === "light";
 		const label = isLight ? "Use dark appearance" : "Use light appearance";
 
 		if (button !== null)
 		{
-			button.innerHTML = isLight ? "&#9790;" : "&#9788;";
 			button.title = label;
 			button.setAttribute("aria-label", label);
 		}
-	}
-
-	// Updates the pattern scope when the reader's focused segment changes.
-	private HandleFocusChanged(event: ChoraEvents["library.focus-changed"]): void
-	{
-		const document = this.libraryStore.GetText();
-		const segment = document?.segments.find((candidate) => candidate.key === event.segmentKey);
-		const locator = segment?.locator?.value ?? null;
-		this.patterns.SetFocusedLocator(locator);
+		if (value !== null && value !== undefined) value.textContent = isLight ? "Light" : "Dark";
 	}
 
 	// Handles the Dream-creation and Dream-save keyboard shortcuts.

@@ -6,7 +6,7 @@ import { LibraryController } from "../library/LibraryController.js";
 import { LibraryStore } from "../library/LibraryStore.js";
 import { CaptureSelection, ClearBrowserSelection } from "./Selection.js";
 import { EscapeHtml } from "../ui/Html.js";
-import { PreviousIcon, NextIcon, SearchIcon } from "../ui/Icons.js";
+import { CloseIcon, PreviousIcon, NextIcon, SearchIcon, SettingsIcon } from "../ui/Icons.js";
 import { ReadingSettingsStore } from "../core/settings/ReadingSettingsStore.js";
 
 // Renders the active text and its reading toolbar, and translates browser events into controller calls.
@@ -40,8 +40,8 @@ export class DocumentPanel
 		this.root.addEventListener("contextmenu", this.HandleContextMenuAsync.bind(this));
 		this.subscriptions.push(this.events.Subscribe("library.text-opened", this.HandleTextOpened.bind(this)));
 		this.subscriptions.push(this.events.Subscribe("library.jump-requested", this.HandleJumpRequested.bind(this)));
-		this.subscriptions.push(this.events.Subscribe("library.find-requested", this.HandleFindRequested.bind(this)));
 		this.subscriptions.push(this.events.Subscribe("library.focus-changed", this.HandleFocusChanged.bind(this)));
+		this.RenderWelcome();
 	}
 
 	// Releases event-bus subscriptions and any pending reading-focus timer.
@@ -59,15 +59,16 @@ export class DocumentPanel
 		if (snapshot.text !== null) this.Update(snapshot.text, snapshot.sourceNotice);
 	}
 
+	// Renders the quiet startup state before a text or Dream is opened.
+	private RenderWelcome(): void
+	{
+		this.root.innerHTML = `<section class="workspace-welcome" aria-labelledby="workspace-welcome-heading"><h1 id="workspace-welcome-heading">Chora</h1><div class="workspace-welcome-actions"><button class="button-control" data-welcome-open-dream type="button">Open Dream</button><button class="button-control" data-welcome-create-dream type="button">Create Dream</button></div></section>`;
+	}
+
 	// Routes a jump-requested application event to the scroll workflow.
 	private HandleJumpRequested(event: ChoraEvents["library.jump-requested"]): void
 	{
 		this.JumpToSelection(event.selection);
-	}
-
-	private HandleFindRequested(event: ChoraEvents["library.find-requested"]): void
-	{
-		this.RunFind(event.query, event.forward);
 	}
 
 	// Renders the full reading pane for a newly opened text.
@@ -76,9 +77,9 @@ export class DocumentPanel
 		this.findHits = [];
 		this.findIndex = 0;
 		this.activeFindQuery = "";
-		const toolbar = this.RenderReaderToolbar(document, sourceNotice);
+		const toolbar = this.RenderReaderToolbar(document);
 		const segments = this.RenderSegments(document);
-		this.root.innerHTML = `<section id="readingPane">${toolbar}<div class="text-body">${segments}</div></section>`;
+		this.root.innerHTML = `<section id="readingPane">${toolbar}<div class="text-body">${segments}</div>${this.RenderSourceAttribution(document, sourceNotice)}</section>`;
 		this.UpdateFindCount();
 		this.ScheduleReadingFocus();
 	}
@@ -107,8 +108,8 @@ export class DocumentPanel
 		return segments;
 	}
 
-	// Renders the book, Stephanus-locator, and find controls above the reading pane.
-	private RenderReaderToolbar(document: LibraryText, sourceNotice: SourceNotice | null): string
+	// Renders the compact text, passage, search, and reading-settings toolbar.
+	private RenderReaderToolbar(document: LibraryText): string
 	{
 		const works = this.library.GetSnapshot().texts;
 		const workOptions = works.map(function RenderWorkOption(work): string
@@ -126,17 +127,24 @@ export class DocumentPanel
 		const bookControl = books.length === 0 ? "" : `<label class="reader-control reader-book-control"><select data-book-navigation aria-label="Go to book">${books.map((book) => `<option value="${EscapeHtml(book?.value ?? "")}">Book ${EscapeHtml(this.FormatBookNumber(book?.value ?? ""))}</option>`).join("")}</select></label>`;
 		const locators = this.CollectLocators(document);
 		const locatorOptions = locators.map((locator) => `<option value="${EscapeHtml(locator)}">${EscapeHtml(locator)}</option>`).join("");
-		const firstLocator = locators[0] ?? "";
-		const locatorControl = locators.length === 0 ? "" : `<div class="reader-control reader-locator-control"><button class="reader-find-nav button-control" data-passage-step="-1" type="button" title="Previous passage" aria-label="Previous passage">${PreviousIcon}</button><input data-locator-jump type="text" value="${EscapeHtml(firstLocator)}" aria-label="Go to Stephanus locator"><button class="reader-find-nav button-control" data-passage-step="1" type="button" title="Next passage" aria-label="Next passage">${NextIcon}</button></div><label class="reader-control reader-locator-select"><select data-locator-navigation aria-label="Choose Stephanus passage">${locatorOptions}</select></label>`;
-		const source = sourceNotice?.source ?? document.provenance.repository;
-		const license = sourceNotice?.license ?? document.provenance.license;
-		const attribution = [source, license].filter(Boolean).join(" · ");
+		const locatorControl = locators.length === 0 ? "" : `<label class="reader-control reader-locator-select"><select data-locator-navigation aria-label="Choose Stephanus passage">${locatorOptions}</select></label>`;
 		const font = this.settings.GetFont();
 		const isLight = this.settings.GetAppearance() === "light";
 		const appearanceLabel = isLight ? "Use dark appearance" : "Use light appearance";
-		const controls = `<div class="reader-tools app-settings"><div class="application-find">${SearchIcon}<input data-find-input type="search" placeholder="Find in text..." aria-label="Find in text"><span data-find-count aria-live="polite"></span><div class="application-find-actions"><button data-find-prev type="button" title="Previous match" aria-label="Previous match">${PreviousIcon}</button><button data-find-next type="button" title="Next match" aria-label="Next match">${NextIcon}</button></div></div><div class="app-setting-stepper"><button class="app-setting-button button-control" data-font-size="-1" type="button" title="Decrease text size" aria-label="Decrease text size">A&minus;</button><button class="app-setting-button button-control" data-font-size="1" type="button" title="Increase text size" aria-label="Increase text size">A+</button></div><select data-reading-font aria-label="Reading font"><option value="serif"${font === "serif" ? " selected" : ""}>Serif</option><option value="sans"${font === "sans" ? " selected" : ""}>Sans</option></select><button class="app-setting-button button-control" data-toggle-appearance type="button" title="${appearanceLabel}" aria-label="${appearanceLabel}">${isLight ? "&#9790;" : "&#9788;"}</button></div>`;
-		const toolbar = `<header class="reader-toolbar"><div class="reader-toolbar-line"><div class="reader-passage-navigation">${title}${bookControl}${locatorControl}</div>${controls}</div><div class="reader-source-line"><p class="reader-source-attribution">${EscapeHtml(attribution)}</p></div></header>`;
+		const passageControl = bookControl.length === 0 && locatorControl.length === 0 ? "" : `<div class="reader-passage-control"><button class="reader-icon-button button-control" data-passage-step="-1" type="button" title="Previous passage" aria-label="Previous passage">${PreviousIcon}</button>${bookControl}${bookControl.length > 0 && locatorControl.length > 0 ? `<span class="reader-passage-divider" aria-hidden="true"></span>` : ""}${locatorControl}<button class="reader-icon-button button-control" data-passage-step="1" type="button" title="Next passage" aria-label="Next passage">${NextIcon}</button></div>`;
+		const search = `<details class="action-menu reader-search-menu"><summary data-find-toggle title="Find in text" aria-label="Find in text">${SearchIcon}</summary><div class="action-menu-items reader-search-popover"><div class="application-find"><input data-find-input type="search" placeholder="Find in text..." aria-label="Find in text"><span data-find-count aria-live="polite"></span><button data-find-prev type="button" title="Previous match" aria-label="Previous match">${PreviousIcon}</button><button data-find-next type="button" title="Next match" aria-label="Next match">${NextIcon}</button><button data-find-close type="button" title="Close search" aria-label="Close search">${CloseIcon}</button></div></div></details>`;
+		const settings = `<details class="action-menu reader-settings-menu"><summary title="Reading settings" aria-label="Reading settings">${SettingsIcon}</summary><div class="action-menu-items reader-settings-popover"><label class="reader-setting-row"><span>Font</span><select data-reading-font aria-label="Reading font"><option value="serif"${font === "serif" ? " selected" : ""}>Serif</option><option value="sans"${font === "sans" ? " selected" : ""}>Sans</option></select></label><div class="reader-setting-row"><span>Text size</span><div class="app-setting-stepper"><button data-font-size="-1" type="button" title="Decrease text size" aria-label="Decrease text size">A&minus;</button><output data-font-size-value>${this.settings.GetFontSize()}</output><button data-font-size="1" type="button" title="Increase text size" aria-label="Increase text size">A+</button></div></div><button class="reader-setting-row reader-theme-toggle" data-toggle-appearance type="button" title="${appearanceLabel}" aria-label="${appearanceLabel}"><span>Theme</span><span data-appearance-value>${isLight ? "Light" : "Dark"}</span></button></div></details>`;
+		const toolbar = `<header class="reader-toolbar"><div class="reader-toolbar-line"><div class="reader-passage-navigation">${title}${passageControl}</div><div class="reader-tools">${search}${settings}</div></div></header>`;
 		return toolbar;
+	}
+
+	// Renders source and license metadata after the text instead of consuming toolbar space.
+	private RenderSourceAttribution(document: LibraryText, sourceNotice: SourceNotice | null): string
+	{
+		const source = sourceNotice?.source ?? document.provenance.repository;
+		const license = sourceNotice?.license ?? document.provenance.license;
+		const attribution = [source, license].filter(Boolean).join(" · ");
+		return attribution.length === 0 ? "" : `<footer class="reader-source-attribution">${EscapeHtml(attribution)}</footer>`;
 	}
 
 	// Returns each distinct Stephanus locator value in document order.
@@ -185,44 +193,39 @@ export class DocumentPanel
 		{
 			const segment = text.segments.find(function MatchesSegment(candidate): boolean { return candidate.key === event.segmentKey; });
 			const locator = segment?.locator?.value ?? "";
-			const input = this.root.querySelector<HTMLInputElement>("[data-locator-jump]");
 			const chooser = this.root.querySelector<HTMLSelectElement>("[data-locator-navigation]");
 			const book = this.root.querySelector<HTMLSelectElement>("[data-book-navigation]");
-			if (input !== null && input !== document.activeElement) input.value = locator;
 			if (chooser !== null) chooser.value = locator;
 			if (book !== null && segment?.division?.kind === "book") book.value = segment.division.value;
 		}
 	}
 
-	// Navigates to a Stephanus locator as soon as an exact value is selected or typed.
+	// Clears search highlighting when the popup query is emptied.
 	private HandleInput(event: Event): void
 	{
 		const target = event.target as HTMLElement | null;
-		const isLocator = target?.matches("[data-locator-jump]") === true;
-		if (isLocator) this.JumpToLocator((target as HTMLInputElement).value);
 		if (target instanceof HTMLInputElement && target.matches("[data-find-input]") && target.value.length === 0)
 		{
 			this.RunFind("", true);
 		}
 	}
 
-	// Jumps to a locator or runs a find on Enter from their respective inputs.
+	// Runs search from the popup and dismisses it with Escape.
 	private HandleKeyDown(event: KeyboardEvent): void
 	{
 		const target = event.target as HTMLElement | null;
-		const isLocator = target?.matches("[data-locator-jump]") === true;
 		const isFind = target?.matches("[data-find-input]") === true;
 
-		if (event.key === "Enter" && isLocator)
-		{
-			event.preventDefault();
-			this.JumpToLocator((target as HTMLInputElement).value);
-		}
 		if (event.key === "Enter" && isFind)
 		{
 			event.preventDefault();
 			const forward = !event.shiftKey;
 			this.RunFind((target as HTMLInputElement).value, forward);
+		}
+		if (event.key === "Escape" && isFind)
+		{
+			event.preventDefault();
+			this.CloseFind();
 		}
 	}
 
@@ -233,21 +236,43 @@ export class DocumentPanel
 		const isNext = target?.closest("[data-find-next]") != null;
 		const isPrev = target?.closest("[data-find-prev]") != null;
 
+		if (target?.closest("[data-welcome-open-dream]") !== null)
+		{
+			void this.events.PublishAsync("workspace.dreams-focus-requested", {});
+		}
+		if (target?.closest("[data-welcome-create-dream]") !== null)
+		{
+			void this.controller.OpenPreferredAsync();
+		}
+
 		if (isNext || isPrev)
 		{
 			const query = this.root.querySelector<HTMLInputElement>("[data-find-input]")?.value ?? "";
 			this.RunFind(query, isNext);
 		}
+		if (target?.closest("[data-find-close]") !== null) this.CloseFind();
 		const step = target?.closest<HTMLElement>("[data-passage-step]")?.dataset.passageStep;
 		const document = this.library.GetText();
 		if (step !== undefined && document !== null)
 		{
 			const locators = this.CollectLocators(document);
-			const input = this.root.querySelector<HTMLInputElement>("[data-locator-jump]");
-			const currentIndex = locators.indexOf(input?.value ?? "");
+			const chooser = this.root.querySelector<HTMLSelectElement>("[data-locator-navigation]");
+			const currentIndex = locators.indexOf(chooser?.value ?? "");
 			const nextIndex = Math.max(0, Math.min(locators.length - 1, currentIndex + Number(step)));
 			const locator = locators[nextIndex];
 			if (locator !== undefined) this.JumpToLocator(locator);
+		}
+	}
+
+	// Clears find state, closes the popup, and returns focus to its toolbar button.
+	private CloseFind(): void
+	{
+		this.RunFind("", true);
+		const menu = this.root.querySelector<HTMLDetailsElement>(".reader-search-menu");
+		if (menu !== null)
+		{
+			menu.open = false;
+			menu.querySelector<HTMLElement>("summary")?.focus();
 		}
 	}
 
@@ -272,8 +297,8 @@ export class DocumentPanel
 			}
 
 			if (match !== null) this.ScrollToSegment(match);
-			const input = this.root.querySelector<HTMLInputElement>("[data-locator-jump]");
-			if (match !== null && input !== null) input.value = match.dataset.locator ?? value;
+			const chooser = this.root.querySelector<HTMLSelectElement>("[data-locator-navigation]");
+			if (match !== null && chooser !== null) chooser.value = match.dataset.locator ?? value;
 		}
 	}
 
@@ -401,9 +426,6 @@ export class DocumentPanel
 	{
 		const count = this.root.querySelector<HTMLElement>("[data-find-count]");
 		if (count !== null) count.textContent = this.findHits.length === 0 ? "" : `${this.findIndex + 1}/${this.findHits.length}`;
-		const total = this.findHits.length;
-		const current = total === 0 ? 0 : this.findIndex + 1;
-		void this.events.PublishAsync("library.find-results-changed", { current, total });
 	}
 
 	// Scrolls to the selected book heading below the toolbar.

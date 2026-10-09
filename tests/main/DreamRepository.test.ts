@@ -105,6 +105,58 @@ describe("Dream library", function DreamLibraryTests()
 		expect(content).toContain(GreekPassage);
 	});
 
+	it("renames the persisted file whenever the normalized title slug changes", async function RenamesPersistedFileAsync()
+	{
+		const library = await CreateLibraryAsync();
+		const dream = CreateDream("one", "Original");
+		await library.SaveAsync(dream);
+		const directory = directories[0];
+		if (directory === undefined)
+		{
+			throw new Error("Test directory was not created.");
+		}
+
+		const workPath = path.join(directory, "republic");
+
+		dream.title = "Replacement";
+		await library.SaveAsync(dream);
+		const replacementFiles = await readdir(workPath);
+		expect(replacementFiles).toEqual(["replacement--one.md"]);
+		const replacementPath = path.join(workPath, "replacement--one.md");
+		const replacementContent = await readFile(replacementPath, "utf8");
+		expect(replacementContent).toContain("# Replacement");
+
+		dream.title = "Replacement!";
+		await library.SaveAsync(dream);
+		const unchangedFiles = await readdir(workPath);
+		expect(unchangedFiles).toEqual(["replacement--one.md"]);
+
+		dream.title = "   ";
+		await library.SaveAsync(dream);
+		const untitledFiles = await readdir(workPath);
+		expect(untitledFiles).toEqual(["dream--one.md"]);
+	});
+
+	it("preserves the existing file when writing the renamed file fails", async function PreservesExistingFileAsync()
+	{
+		const directory = await mkdtemp(path.join(os.tmpdir(), "chora-dream-rename-failure-"));
+		directories.push(directory);
+		const repository = new DreamRepository(directory);
+		const original = CreateDream("one", "Original");
+		const originalPath = path.join(directory, "republic", "original--one.md");
+		await repository.SaveAsync({ dream: original, filePath: originalPath });
+		const blockerPath = path.join(directory, "blocker");
+		await writeFile(blockerPath, "not a directory", "utf8");
+		const replacement = { ...original, title: "Replacement" };
+		const replacementPath = path.join(blockerPath, "replacement--one.md");
+
+		const failedSave = repository.SaveAsync({ dream: replacement, filePath: replacementPath }, originalPath);
+		await expect(failedSave).rejects.toThrow();
+
+		const originalContent = await readFile(originalPath, "utf8");
+		expect(originalContent).toContain("# Original");
+	});
+
 	it("deletes only the Dream with the requested identifier", async () =>
 	{
 		const library = await CreateLibraryAsync();

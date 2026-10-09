@@ -28,6 +28,8 @@ export class DreamSignalsPanel extends TabPanel
 	// Retained listeners for disposal.
 	private readonly clickHandler = this.HandleClick.bind(this);
 	private readonly keyDownHandler = this.HandleKeyDown.bind(this);
+	// Dream identity currently rendered by this panel.
+	private dreamId: string | null = null;
 
 	// Connects the signal panel to its workflow controller.
 	public constructor(private readonly controller: DreamController, private readonly errors: ErrorManager)
@@ -48,6 +50,7 @@ export class DreamSignalsPanel extends TabPanel
 	// Reconciles structural changes while retaining existing editors and disclosure state.
 	public Update(dream: Dream): void
 	{
+		this.dreamId = dream.id;
 		const ids = new Set<string>();
 		for (const signal of dream.signals) ids.add(signal.id);
 		for (const [id, row] of this.rows)
@@ -83,14 +86,19 @@ export class DreamSignalsPanel extends TabPanel
 			previous = header;
 		}
 		this.empty.hidden = dream.signals.length > 0;
-		const selected = this.selectedSignalId !== null && ids.has(this.selectedSignalId)
-			? this.selectedSignalId : dream.signals[0]?.id ?? null;
+		const remembered = this.controller.GetSelectedSignal(dream.id);
+		const selected = remembered !== null && ids.has(remembered)
+			? remembered
+			: this.selectedSignalId !== null && ids.has(this.selectedSignalId)
+				? this.selectedSignalId
+				: dream.signals[0]?.id ?? null;
 		this.SelectSignal(selected);
 	}
 
 	private SelectSignal(signalId: string | null): void
 	{
 		this.selectedSignalId = signalId;
+		if (this.dreamId !== null) this.controller.RememberSelectedSignal(this.dreamId, signalId);
 		for (const [id, row] of this.rows)
 		{
 			const selected = id === signalId;
@@ -108,16 +116,25 @@ export class DreamSignalsPanel extends TabPanel
 	{
 		const row = this.rows.get(signalId);
 		const editor = this.editors.get(signalId);
+		const header = this.navigation.get(signalId);
 		this.revealVersion += 1;
 		const version = this.revealVersion;
-		if (row !== undefined && editor !== undefined)
+
+		if (row !== undefined && editor !== undefined && header !== undefined)
 		{
 			this.SelectSignal(signalId);
 			await editor.Ready;
-			if (version === this.revealVersion && row.isConnected && !this.Root.hidden && !row.hidden)
+			const canReveal = version === this.revealVersion
+				&& row.isConnected
+				&& header.isConnected
+				&& !this.Root.hidden
+				&& !row.hidden;
+
+			if (canReveal)
 			{
-				row.scrollIntoView({ block: "start", behavior: "instant" });
 				editor.Focus();
+				header.scrollIntoView({ block: "nearest", behavior: "smooth" });
+				row.scrollIntoView({ block: "nearest", behavior: "smooth" });
 			}
 		}
 	}
@@ -146,7 +163,8 @@ export class DreamSignalsPanel extends TabPanel
 		header.className = "signal-header";
 		header.innerHTML = `<button class="signal-row button-control" data-signal-toggle="${EscapeHtml(signal.id)}" type="button" aria-expanded="false"><strong class="signal-heading">${EscapeHtml(signal.text)}</strong></button><button class="signal-chat-button dream-icon-button button-control" data-signal-chat="${EscapeHtml(signal.id)}" type="button" title="Chat with the model" aria-label="Chat with the model"></button>`;
 		this.navigation.set(signal.id, header);
-		row.innerHTML = `<header class="signal-detail-title"><details class="action-menu"><summary title="Signal actions" aria-label="Signal actions">${MoreIcon}</summary><div class="action-menu-items"><button data-delete-signal="${EscapeHtml(signal.id)}" type="button">${TrashIcon}Delete signal</button></div></details></header>`;
+		const escapedSignalId = EscapeHtml(signal.id);
+		row.innerHTML = `<header class="signal-detail-title"><details class="action-menu"><summary title="Signal actions" aria-label="Signal actions">${MoreIcon}</summary><div class="action-menu-items"><button data-add-signal-to-idea="${escapedSignalId}" type="button">Add to Idea&hellip;</button><button data-delete-signal="${escapedSignalId}" type="button">${TrashIcon}Delete signal</button></div></details></header>`;
 		const body = document.createElement("div");
 		body.className = "signal-detail-body";
 		row.append(body);
@@ -160,7 +178,14 @@ export class DreamSignalsPanel extends TabPanel
 		editor.Root.classList.add("signal-markdown-editor");
 		editor.Root.dataset.signalDescription = signal.id;
 		this.editors.set(signal.id, editor);
-		body.append(editor.Root);
+		const actionMenu = row.querySelector<HTMLDetailsElement>(".action-menu");
+		const markdownToolbar = editor.Root.querySelector<HTMLElement>(".markdown-toolbar");
+		if (actionMenu !== null && markdownToolbar !== null) markdownToolbar.append(actionMenu);
+		row.querySelector(".signal-detail-title")?.remove();
+		const observation = document.createElement("section");
+		observation.className = "signal-observation";
+		observation.append(editor.Root);
+		body.append(observation);
 		const section = document.createElement("details");
 		section.className = "resonance-section";
 		section.dataset.resonanceSection = "";
@@ -188,6 +213,14 @@ export class DreamSignalsPanel extends TabPanel
 		if (chatSignalId !== undefined)
 		{
 			this.controller.ChatWithSignal(chatSignalId);
+		}
+
+		const addToIdeaSignalId = target?.closest<HTMLElement>("[data-add-signal-to-idea]")?.dataset.addSignalToIdea;
+
+		if (addToIdeaSignalId !== undefined)
+		{
+			const addition = this.controller.AddSignalToIdeaAsync(addToIdeaSignalId);
+			void addition;
 		}
 		const toggleButton = target?.closest<HTMLButtonElement>("[data-signal-toggle]");
 		if (toggleButton !== null && toggleButton !== undefined)

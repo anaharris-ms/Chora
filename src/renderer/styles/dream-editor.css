@@ -1,51 +1,3 @@
-.dream-markdown-tab {
-	grid-column: 1 / -1;
-	grid-row: 2;
-	min-width: 0;
-	min-height: 0;
-	overflow: auto;
-	display: flex;
-	flex-direction: column;
-}
-
-.dream-markdown-actions {
-	display: flex;
-	gap: 6px;
-	position: sticky;
-	top: 0;
-	z-index: 2;
-	background: var(--dream-background);
-	padding: 6px 0;
-}
-
-.dream-markdown-input {
-	background: var(--dream-background);
-	color: var(--app-text);
-	border: 1px solid var(--panel-border);
-	padding: 10px;
-	flex: 1;
-	width: 100%;
-	min-height: 220px;
-	resize: none;
-	box-sizing: border-box;
-	font-family: monospace;
-	font-size: var(--reading-font-size);
-	line-height: 1.6;
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-}
-
-.dream-markdown-error {
-	color: var(--danger, #b52a32);
-	margin: 4px 0 8px;
-	overflow-wrap: anywhere;
-}
-
-.dream-markdown-preview .ProseMirror {
-	font-size: var(--reading-font-size);
-	overflow-wrap: anywhere;
-}
-
 .signal-header {
 	display: flex;
 	align-items: flex-start;
@@ -82,67 +34,10 @@
 	font-size: 13px;
 }
 
-.dream-editor .dream-editor-header {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
-	gap: 0.15rem 0.5rem;
-	align-items: center;
-	flex-shrink: 0;
-	position: static;
-	min-height: 60px;
-	margin: 0;
-	padding: 0;
-	border: 0;
-	border-bottom: 1px solid var(--panel-border);
-	background: transparent;
-}
-
-.dream-editor .dream-editor-header h2 {
-	min-width: 0;
-	overflow-wrap: anywhere;
-	font-family: var(--ui-font);
-	font-size: 16px;
-	font-weight: 500;
-	line-height: 1.3;
-}
-
-.dream-editor-header .dream-toolbar {
-	grid-column: 2;
-	justify-self: end;
-	align-items: center;
-	gap: 22px;
-}
-
-.dream-title-line,
-.signal-detail-title {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	min-width: 0;
-}
-
-.dream-title-line h2 {
-	margin: 0;
-}
-
-.dream-title-line > button {
-	flex-shrink: 0;
-}
-
 .dream-editor .dream-toolbar-status {
 	font-size: 11px;
 	white-space: nowrap;
 	color: var(--app-text);
-}
-
-.signal-detail-title {
-	flex-shrink: 0;
-	justify-content: flex-end;
-	padding-bottom: 2px;
-}
-
-.signal-detail-title .action-menu {
-	margin-left: 0;
 }
 
 .dream-editor .dream-icon-button {
@@ -190,20 +85,22 @@
 }
 
 .dream-editor .dream-source-section {
+	position: relative;
 	flex-shrink: 0;
 	min-height: 0;
 	max-height: 35%;
 	overflow: auto;
-	margin: 0;
-	padding: 16px 4px 12px;
+	margin: 0 -18px 0 -16px;
+	padding: 16px 20px 12px;
 	border: 0;
 	border-bottom: 1px solid var(--panel-border);
 	border-radius: 0;
-	background: transparent;
+	background: var(--reader-background);
+	color: var(--reader-foreground);
 }
 
 .dream-source-section summary {
-	color: var(--app-text);
+	color: var(--reader-foreground);
 	font-family: var(--ui-font);
 	font-size: 13px;
 	font-weight: 600;
@@ -229,7 +126,7 @@
 	border-left: 0;
 	border-radius: 0;
 	background: transparent;
-	color: var(--app-text);
+	color: var(--reader-foreground);
 	font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 	font-size: var(--reading-font-size);
 	font-weight: 400;
@@ -283,7 +180,7 @@
 	grid-template-columns: minmax(0, var(--signal-navigation-width)) minmax(0, 1fr);
 	gap: var(--signal-panel-gap);
 	min-height: 0;
-	padding: 8px 0 0;
+	padding: 0;
 }
 
 .dream-editor .signal-list {
@@ -352,11 +249,6 @@
 	color: inherit;
 }
 
-.dream-editor .signal-disclosure {
-	color: inherit;
-	transform: none;
-}
-
 .dream-editor .selected .signal-chat-button {
 	color: var(--app-text);
 }
@@ -383,18 +275,6 @@
 	border: 0;
 }
 
-.dream-editor .signal-detail-heading {
-	flex-shrink: 0;
-	margin: 0;
-	padding: 4px 0 10px;
-	border-bottom: 0;
-	font-family: var(--ui-font);
-	font-size: 16px;
-	font-weight: 600;
-	line-height: 1.3;
-	overflow-wrap: anywhere;
-}
-
 .dream-editor .signal-detail-body {
 	flex: 1;
 	min-height: 0;
@@ -403,16 +283,30 @@
 	scrollbar-width: thin;
 }
 
+.dream-editor .signal-observation {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	overflow: hidden;
+}
+
 .dream-editor .signal-markdown-editor {
-	margin: 0 0 1rem;
+	margin: 0;
 	color: var(--app-text);
 	font-size: var(--reading-font-size);
 	line-height: 1.55;
 }
 
 .dream-editor .markdown-toolbar {
-	padding: 0 0 4px;
+	padding: 3px 0;
 	gap: 12px;
+	background: var(--signal-toolbar-background);
+	border-top: 0;
+}
+
+.dream-editor .markdown-toolbar > .action-menu {
+	margin-left: auto;
 }
 
 .dream-editor .markdown-toolbar button {
@@ -420,7 +314,7 @@
 }
 
 .dream-editor .markdown-content {
-	padding: 10px 0 0;
+	padding: 10px 0 12px;
 	overflow: visible;
 	resize: none;
 	font-size: var(--reading-font-size);
@@ -431,7 +325,7 @@
 }
 
 .dream-editor .resonance-section {
-	padding: 14px 0 0;
+	padding: 16px 0 0;
 	border-top: 1px solid var(--panel-border);
 }
 
@@ -571,42 +465,9 @@
 		grid-row: 2;
 	}
 
-	.dream-editor .dream-editor-header {
-		padding-inline: 0;
-	}
-
-	.dream-editor .signal-detail-heading {
-		margin-inline: 0.75rem;
-	}
-
-	.dream-editor .signal-detail-body {
-		padding-inline: 0.75rem;
-	}
 }
 
-.dream-exegesis-editor {
-	box-sizing: border-box;
-	display: block;
-	width: 100%;
-	min-height: 18rem;
-	padding: 0.85rem;
-	border: 1px solid var(--panel-border);
-	border-radius: 4px;
-	background: var(--dream-raised);
-	color: var(--app-text);
-	font: inherit;
-	font-size: 0.9rem;
-	line-height: 1.6;
-	resize: vertical;
-}
-
-.dream-exegesis-editor:focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: -2px;
-}
-
-.dream-settings-title,
-.dream-settings-danger {
+.dream-settings-title {
 	margin: 1rem 1.25rem;
 }
 
@@ -615,34 +476,21 @@
 	width: 100%;
 }
 
-.dream-settings-danger {
-	padding-top: 1rem;
-	border-top: 1px solid var(--panel-border);
+.dream-rename-error {
+	margin: 0 1.25rem 1rem;
+	color: var(--danger);
+	font-size: 0.8rem;
 }
 
-.dream-settings-danger button {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.dream-settings-danger svg {
-	width: 1rem;
-	height: 1rem;
+.dream-rename-actions {
+	display: flex;
+	justify-content: flex-end;
+	padding: 0 1.25rem 1rem;
 }
 
 .popup-body section > h4 {
 	margin: 1rem 1.25rem 0.5rem;
 	font-size: 0.85rem;
-}
-
-.dream-markdown-preview .markdown-content {
-	resize: none;
-	overflow: visible;
-}
-
-.dream-markdown-preview pre {
-	white-space: pre-wrap;
 }
 
 .dream-tabs-host .tab-list {

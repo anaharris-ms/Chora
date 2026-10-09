@@ -1,17 +1,26 @@
-// A reusable modal popup: an overlay with a titled dialog, a close control, and caller-supplied body content.
-// Mounts itself directly under <body>, independent of any panel's own re-render cycle.
+// Owns one reusable modal overlay and its caller-supplied body content.
 export class PopupPanel
 {
+	// Contains the persistent modal overlay.
 	private readonly overlay: HTMLElement;
+	// Contains caller-supplied popup content.
 	private readonly body: HTMLElement;
+	// Handles backdrop clicks for the popup lifetime.
+	private readonly overlayClickHandler: (event: MouseEvent) => void;
+	// Handles the close button for the popup lifetime.
+	private readonly closeClickHandler: () => void;
+	// Tracks whether the popup is visible.
 	private isOpen = false;
 
+	// Creates and mounts one titled modal popup beneath the document body.
 	public constructor(title: string)
 	{
+		this.overlayClickHandler = this.HandleOverlayClick.bind(this);
+		this.closeClickHandler = this.Close.bind(this);
 		this.overlay = document.createElement("div");
 		this.overlay.className = "popup-overlay";
 		this.overlay.hidden = true;
-		this.overlay.addEventListener("click", this.HandleOverlayClick.bind(this));
+		this.overlay.addEventListener("click", this.overlayClickHandler);
 
 		const dialog = document.createElement("div");
 		dialog.className = "popup-dialog";
@@ -25,21 +34,22 @@ export class PopupPanel
 		closeButton.className = "popup-close button-control";
 		closeButton.setAttribute("aria-label", "Close");
 		closeButton.textContent = "\u00d7";
-		closeButton.addEventListener("click", () => this.Close());
+		closeButton.addEventListener("click", this.closeClickHandler);
 		header.append(heading, closeButton);
 
 		this.body = document.createElement("div");
 		this.body.className = "popup-body";
-
 		dialog.append(header, this.body);
 		this.overlay.appendChild(dialog);
 		document.body.appendChild(this.overlay);
 	}
 
-	// True while the popup is visible.
+	// Reports whether the popup is visible.
 	public get IsOpen(): boolean
 	{
-		return this.isOpen;
+		const isOpen = this.isOpen;
+
+		return isOpen;
 	}
 
 	// Shows the popup.
@@ -56,40 +66,54 @@ export class PopupPanel
 		this.overlay.hidden = true;
 	}
 
-	// Replaces the popup body's markup. Callers re-render this whenever the underlying data changes.
+	// Replaces all popup body markup.
 	public SetBodyHtml(html: string): void
 	{
 		this.body.innerHTML = html;
 	}
 
-	// Registers a delegated click handler scoped to the popup body.
+	// Registers delegated click handling within the popup body.
 	public OnBodyClick(handler: (event: MouseEvent) => void): void
 	{
 		this.body.addEventListener("click", handler);
 	}
 
-	// Registers delegated input handling for editable popup fields.
-	public OnBodyInput(handler: (event: Event) => void): void
+	// Registers delegated form submission handling within the popup body.
+	public OnBodySubmit(handler: (event: Event) => void): void
 	{
-		this.body.addEventListener("input", handler);
+		this.body.addEventListener("submit", handler);
 	}
 
-	// Refreshes one section without replacing unrelated inputs or their focus.
+	// Registers delegated keyboard handling within the popup body.
+	public OnBodyKeyDown(handler: (event: KeyboardEvent) => void): void
+	{
+		this.body.addEventListener("keydown", handler);
+	}
+
+	// Refreshes one body section without replacing unrelated inputs.
 	public SetSectionHtml(selector: string, html: string): void
 	{
 		const section = this.body.querySelector<HTMLElement>(selector);
-		if (section !== null) section.innerHTML = html;
+
+		if (section !== null)
+		{
+			section.innerHTML = html;
+		}
 	}
 
-	// Removes the popup from the document and releases its listeners.
+	// Removes the popup and its owned root listeners.
 	public Dispose(): void
 	{
+		this.overlay.removeEventListener("click", this.overlayClickHandler);
 		this.overlay.remove();
 	}
 
-	// Closes the popup when the backdrop itself, not the dialog, is clicked.
+	// Closes the popup when the reader clicks the backdrop itself.
 	private HandleOverlayClick(event: MouseEvent): void
 	{
-		if (event.target === this.overlay) this.Close();
+		if (event.target === this.overlay)
+		{
+			this.Close();
+		}
 	}
 }

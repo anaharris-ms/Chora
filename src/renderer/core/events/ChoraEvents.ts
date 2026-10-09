@@ -7,11 +7,18 @@ export interface ChoraEvents
 	"lookup.changed": Record<string, never>;
 	"library.text-opened": Record<string, never>;
 	"library.text-open-requested": { textId: string };
-	"library.selection-changed": { textId: string; hasSelection: boolean };
 	"library.focus-changed": { textId: string; segmentKey: string };
 	"library.jump-requested": { selection: TextSelection };
-	"library.find-requested": { query: string; forward: boolean };
-	"library.find-results-changed": { current: number; total: number };
+	// Requests focus on the Dreams Explorer without opening a Dream.
+	"workspace.dreams-focus-requested": Record<string, never>;
+	// Requests selection of a durable Idea for one existing Signal.
+	"idea.add-signal-requested": { dreamId: string; signalId: string };
+	// Requests that an Idea-referenced Signal open in the established Dream editor.
+	"idea.signal-view-requested": { dreamId: string; signalId: string };
+	// Requests a return from an Idea-referenced Signal preview to the active Idea.
+	"idea.return-requested": Record<string, never>;
+	// Announces a change to renderer-owned Idea state.
+	"ideas.changed": Record<string, never>;
 	"dream.create-requested": { selection: TextSelection };
 	"dream.signal-add-requested": { selection: TextSelection };
 	"dream.source-extend-requested": { selection: TextSelection };
@@ -40,7 +47,6 @@ export interface ChoraEvents
 	"chat.dream-requested": { dreamId: string };
 	// Announces that a conversation is ready for the reader's message.
 	"chat.conversation-opened": Record<string, never>;
-	"patterns.changed": Record<string, never>;
 	"error.reported": ErrorRecord;
 }
 

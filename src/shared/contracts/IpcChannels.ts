@@ -22,7 +22,14 @@ export const IPC_CHANNELS = {
 	getConfiguredProvider: "chora:get-configured-provider",
 	getProviderOptions: "chora:get-provider-options",
 	getSourceNotice: "chora:get-source-notice",
-	listPatterns: "chora:list-patterns",
+	// Lists work-owned Ideas.
+	listIdeas: "chora:list-ideas",
+	// Discovers related existing Signals.
+	discoverIdeaSignals: "chora:discover-idea-signals",
+	// Saves reader-editable Idea data.
+	saveIdea: "chora:save-idea",
+	// Deletes one work-owned Idea.
+	deleteIdea: "chora:delete-idea",
 	saveDream: "chora:save-dream",
 	deleteDream: "chora:delete-dream",
 	listDreams: "chora:list-dreams",

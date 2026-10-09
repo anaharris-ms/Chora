@@ -10,8 +10,8 @@ const applicationMocks = vi.hoisted(function CreateApplicationMocks()
 		libraryList: vi.fn(),
 		libraryStart: vi.fn(),
 		libraryStop: vi.fn(),
-		patternsStart: vi.fn(),
-		patternsStop: vi.fn(),
+		ideasStart: vi.fn(),
+		ideasStop: vi.fn(),
 		dreamsStart: vi.fn(),
 		dreamsStop: vi.fn(),
 		chatStart: vi.fn(),
@@ -56,12 +56,12 @@ vi.mock("../../src/main/library/LibraryModule.js", function MockLibraryModule()
 	};
 });
 
-vi.mock("../../src/main/patterns/PatternModule.js", function MockPatternModule()
+vi.mock("../../src/main/ideas/IdeaModule.js", function MockIdeaModule()
 {
 	return {
-		PatternModule: vi.fn(function PatternModule()
+		IdeaModule: vi.fn(function IdeaModule()
 		{
-			return { Start: applicationMocks.patternsStart, Stop: applicationMocks.patternsStop };
+			return { Start: applicationMocks.ideasStart, Stop: applicationMocks.ideasStop };
 		})
 	};
 });
@@ -71,7 +71,21 @@ vi.mock("../../src/main/dreams/DreamModule.js", function MockDreamModule()
 	return {
 		DreamModule: vi.fn(function DreamModule()
 		{
-			return { Start: applicationMocks.dreamsStart, Stop: applicationMocks.dreamsStop };
+			// Supplies the Dream use cases required by Idea composition.
+			function GetService(): object
+			{
+				const service = {};
+
+				return service;
+			}
+
+			const module = {
+				GetService,
+				Start: applicationMocks.dreamsStart,
+				Stop: applicationMocks.dreamsStop
+			};
+
+			return module;
 		})
 	};
 });
@@ -193,19 +207,19 @@ describe("Application menu", function ApplicationMenuTests(): void
 		await expect(application.StartAsync()).rejects.toThrow("menu failed");
 		expect(applicationMocks.libraryStart).toHaveBeenCalledTimes(1);
 		expect(applicationMocks.lookupRegister).toHaveBeenCalledTimes(1);
-		expect(applicationMocks.patternsStart).toHaveBeenCalledTimes(1);
+		expect(applicationMocks.ideasStart).toHaveBeenCalledTimes(1);
 		expect(applicationMocks.dreamsStart).toHaveBeenCalledTimes(1);
 		expect(applicationMocks.chatStart).toHaveBeenCalledTimes(1);
 		expect(applicationMocks.lookupUnregister).toHaveBeenCalledTimes(1);
 		expect(applicationMocks.chatStop).toHaveBeenCalledTimes(1);
 		expect(applicationMocks.dreamsStop).toHaveBeenCalledTimes(1);
-		expect(applicationMocks.patternsStop).toHaveBeenCalledTimes(1);
+		expect(applicationMocks.ideasStop).toHaveBeenCalledTimes(1);
 		expect(applicationMocks.libraryStop).toHaveBeenCalledTimes(1);
 
 		await application.StartAsync();
 		expect(applicationMocks.libraryStart).toHaveBeenCalledTimes(2);
 		expect(applicationMocks.lookupRegister).toHaveBeenCalledTimes(2);
-		expect(applicationMocks.patternsStart).toHaveBeenCalledTimes(2);
+		expect(applicationMocks.ideasStart).toHaveBeenCalledTimes(2);
 		expect(applicationMocks.dreamsStart).toHaveBeenCalledTimes(2);
 		expect(applicationMocks.chatStart).toHaveBeenCalledTimes(2);
 
@@ -214,7 +228,7 @@ describe("Application menu", function ApplicationMenuTests(): void
 		expect(applicationMocks.lookupUnregister).toHaveBeenCalledTimes(2);
 		expect(applicationMocks.chatStop).toHaveBeenCalledTimes(2);
 		expect(applicationMocks.dreamsStop).toHaveBeenCalledTimes(2);
-		expect(applicationMocks.patternsStop).toHaveBeenCalledTimes(2);
+		expect(applicationMocks.ideasStop).toHaveBeenCalledTimes(2);
 		expect(applicationMocks.libraryStop).toHaveBeenCalledTimes(2);
 	});
 });

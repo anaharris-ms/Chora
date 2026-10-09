@@ -3,7 +3,7 @@ import type { ModelSelection, ProviderId, ProviderOption } from "../chat/ModelTy
 import type { LibraryText, LibraryTextSummary, SourceNotice } from "../library/LibraryTypes.js";
 import type { SelectionAction } from "../library/SelectionTypes.js";
 import type { Dream } from "../dreams/DreamTypes.js";
-import type { PatternRecord } from "../patterns/PatternTypes.js";
+import type { DeleteIdeaCommand, IdeaDiscoveryRequest, IdeaDiscoverySuggestion, IdeaRecord, SaveIdeaCommand } from "../ideas/IdeaTypes.js";
 import type { LookupBounds, LookupCommand, LookupState } from "../library/LookupTypes.js";
 
 export type ApiSubscription = () => void;
@@ -36,7 +36,14 @@ export interface ChoraApi
 	GetConfiguredProvider(): Promise<ProviderId>;
 	GetProviderOptions(): Promise<ProviderOption[]>;
 	GetSourceNotice(workId: string): Promise<SourceNotice>;
-	ListPatterns(workId: string): Promise<PatternRecord[]>;
+	// Lists durable Ideas belonging to one work.
+	ListIdeas(workId: string): Promise<IdeaRecord[]>;
+	// Discovers existing Signals related to an unsaved Idea draft.
+	DiscoverIdeaSignals(request: IdeaDiscoveryRequest): Promise<IdeaDiscoverySuggestion[]>;
+	// Creates or updates an Idea from reader-editable fields.
+	SaveIdea(command: SaveIdeaCommand): Promise<IdeaRecord>;
+	// Deletes one durable Idea through a narrow ownership command.
+	DeleteIdea(command: DeleteIdeaCommand): Promise<void>;
 	SaveDream(dream: Dream): Promise<Dream>;
 	DeleteDream(dreamId: string): Promise<void>;
 	ListDreams(): Promise<Dream[]>;

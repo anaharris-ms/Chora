@@ -40,7 +40,8 @@ function CreateDream(): Dream
 		source: {
 			documentId: text.id, start: { segmentKey: "s1", offset: 1 }, end: { segmentKey: "s4", offset: 3 },
 			selectedText: "bcdef ghijkl mnopqr stu", locatorStart: { scheme: "Stephanus", value: "340a" },
-			locatorEnd: { scheme: "Stephanus", value: "341c" }, sourceRefs: ["s1", "s2", "s3", "s4"], startSourceRef: "s1", endSourceRef: "s4"
+			locatorEnd: { scheme: "Stephanus", value: "341c" }, sourceRefs: ["s1", "s2", "s3", "s4"], startSourceRef: "s1", endSourceRef: "s4",
+			division: { kind: "book", value: "1" }
 		}
 	};
 	return dream;
@@ -91,13 +92,16 @@ describe("Dream passage matching", function PassageTests()
 				expect(heading.nextElementSibling?.getAttribute("data-book-start")).toBe(heading.dataset.bookHeading);
 			}
 			expect(root.querySelector(".reader-source-attribution")?.textContent).toBe("Perseus Digital Library · CC BY-SA");
-			expect(root.querySelector(".reader-toolbar details")).toBeNull();
-			expect(root.querySelectorAll(".reader-tools [data-font-size]")).toHaveLength(2);
+			expect(root.querySelector(".reader-toolbar .reader-source-attribution")).toBeNull();
+			expect(root.querySelectorAll(".reader-toolbar details")).toHaveLength(2);
+			expect(root.querySelectorAll(".reader-settings-popover [data-font-size]")).toHaveLength(2);
+			expect(root.querySelector(".reader-search-menu > summary")?.getAttribute("aria-label")).toBe("Find in text");
+			expect(root.querySelector(".reader-settings-menu > summary")?.getAttribute("aria-label")).toBe("Reading settings");
 			const navigation = root.querySelector(".reader-passage-navigation")!;
 			expect(navigation.querySelector("[data-reader-work]")).not.toBeNull();
 			expect(navigation.querySelector("[data-book-navigation]")).not.toBeNull();
-			expect(navigation.querySelector("[data-locator-jump]")).not.toBeNull();
 			expect(navigation.querySelector("[data-locator-navigation]")).not.toBeNull();
+			expect(navigation.querySelector("[data-locator-jump]")).toBeNull();
 			expect(root.querySelector(".reader-toolbar-line [data-book-navigation]")).not.toBeNull();
 			const passageSelect = root.querySelector<HTMLSelectElement>("[data-locator-navigation]")!;
 			const labels = Array.from(passageSelect.options).map(function GetLabel(option): string { return option.text; });
@@ -107,11 +111,12 @@ describe("Dream passage matching", function PassageTests()
 			expect(getComputedStyle(firstPassage).getPropertyValue("content-visibility")).not.toBe("auto");
 			passageSelect.value = "341c";
 			passageSelect.dispatchEvent(new Event("change", { bubbles: true }));
-			expect(root.querySelector<HTMLInputElement>("[data-locator-jump]")?.value).toBe("341c");
 			expect(passageSelect.value).toBe("341c");
 			passageSelect.value = "340a";
 			passageSelect.dispatchEvent(new Event("change", { bubbles: true }));
-			const input = root.querySelector<HTMLInputElement>(".reader-tools [data-find-input]")!;
+			const searchMenu = root.querySelector<HTMLDetailsElement>(".reader-search-menu")!;
+			searchMenu.open = true;
+			const input = root.querySelector<HTMLInputElement>("[data-find-input]")!;
 			input.value = "word";
 			input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 			expect(root.querySelectorAll("mark.find-hit")).toHaveLength(2);
@@ -124,10 +129,12 @@ describe("Dream passage matching", function PassageTests()
 			input.dispatchEvent(new Event("input", { bubbles: true }));
 			expect(root.querySelectorAll("mark.find-hit")).toHaveLength(0);
 			expect(root.querySelector("[data-find-count]")?.textContent).toBe("");
+			input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+			expect(searchMenu.open).toBe(false);
 			root.querySelector<HTMLButtonElement>('[data-passage-step="1"]')?.click();
-			expect(root.querySelector<HTMLInputElement>("[data-locator-jump]")?.value).toBe("340b");
+			expect(passageSelect.value).toBe("340b");
 			root.querySelector<HTMLButtonElement>('[data-passage-step="-1"]')?.click();
-			expect(root.querySelector<HTMLInputElement>("[data-locator-jump]")?.value).toBe("340a");
+			expect(passageSelect.value).toBe("340a");
 			const book = root.querySelector<HTMLSelectElement>("[data-book-navigation]")!;
 			const headingBounds = vi.spyOn(headings[1], "getBoundingClientRect").mockReturnValue(new DOMRect(0, 500, 400, 30));
 			const toolbar = root.querySelector<HTMLElement>(".reader-toolbar")!;
@@ -142,15 +149,8 @@ describe("Dream passage matching", function PassageTests()
 			await events.PublishAsync("library.focus-changed", { textId: text.id, segmentKey: "s2" });
 			expect(passageSelect.value).toBe("340a");
 			expect(book.value).toBe("1");
-			const locatorInput = root.querySelector<HTMLInputElement>("[data-locator-jump]")!;
-			expect(locatorInput.hasAttribute("list")).toBe(false);
-			expect(getComputedStyle(locatorInput.parentElement!).gridTemplateColumns).toBe("24px 48px 24px");
-			locatorInput.focus();
-			locatorInput.value = "34";
 			await events.PublishAsync("library.focus-changed", { textId: text.id, segmentKey: "s4" });
-			expect(locatorInput.value).toBe("34");
 			expect(passageSelect.value).toBe("341c");
-			locatorInput.blur();
 			vi.spyOn(root, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 600));
 			vi.spyOn(toolbar, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 100));
 			const positions: Record<string, number> = { s1: 120, s2: 220, s3: 320, s4: 800 };
@@ -166,7 +166,6 @@ describe("Dream passage matching", function PassageTests()
 			await vi.waitFor(function BookStartUpdated(): void
 			{
 				expect(passageSelect.value).toBe("340a");
-				expect(locatorInput.value).toBe("340a");
 			});
 			positions.s1 = -100;
 			positions.s2 = 0;
@@ -176,7 +175,6 @@ describe("Dream passage matching", function PassageTests()
 			await vi.waitFor(function ScrollUpdated(): void
 			{
 				expect(passageSelect.value).toBe("340b");
-				expect(locatorInput.value).toBe("340b");
 				expect(book.value).toBe("1");
 			});
 			root.scrollTop = 0;
@@ -337,6 +335,10 @@ describe("Dream passage matching", function PassageTests()
 			expect(catalogueRoot.querySelector(".catalogue-header")).toBeNull();
 			expect(catalogueRoot.querySelector(".dream-catalogue-controls [data-new-dream]")).not.toBeNull();
 			expect(catalogueRoot.querySelector(".dream-catalogue-controls [data-dream-search]")).not.toBeNull();
+			expect(catalogueRoot.querySelector("[data-text-toggle]")?.textContent).toContain("The Republic");
+			expect(catalogueRoot.querySelector("[data-text-toggle]")?.getAttribute("aria-level")).toBe("1");
+			expect(catalogueRoot.querySelector("[data-book-toggle]")?.getAttribute("aria-level")).toBe("2");
+			expect(catalogueRoot.querySelector("[data-dream-id]")?.getAttribute("aria-level")).toBe("3");
 			readingRoot.scrollTop = 120;
 			const button = readingRoot.querySelector<HTMLButtonElement>('[data-passage-dreams="s3"]');
 			expect(button?.getAttribute("aria-label")).toBe("1 Dream for 340b");
@@ -347,7 +349,8 @@ describe("Dream passage matching", function PassageTests()
 			});
 			expect(store.GetSearchText()).toBe("");
 			expect(catalogueRoot.querySelectorAll("[data-dream-id]")).toHaveLength(1);
-			expect(catalogueRoot.querySelector(".catalogue-location")?.textContent).toBe("Republic · 340a–341c");
+			expect(catalogueRoot.querySelector("[data-dream-id]")?.getAttribute("title")).toBe("Republic · 340a–341c");
+			expect(catalogueRoot.querySelector("[data-dream-id] .catalogue-reference")?.textContent).toBe("(340a–341c)");
 			expect(readingRoot.querySelector(".segment-text")).toBe(sourceNode);
 			expect(readingRoot.scrollTop).toBe(120);
 			expect(store.GetActiveDream()).toBeNull();
@@ -358,8 +361,8 @@ describe("Dream passage matching", function PassageTests()
 			{
 				expect(catalogueRoot.querySelectorAll("[data-dream-id]")).toHaveLength(2);
 			});
-			const singleLocation = catalogueRoot.querySelector('[data-dream-id="single"] .catalogue-location');
-			expect(singleLocation?.textContent).toBe("Republic · 340a");
+			const singleLocation = catalogueRoot.querySelector('[data-dream-id="single"]');
+			expect(singleLocation?.getAttribute("title")).toBe("Republic · 340a");
 
 			await events.PublishAsync("dream.passage-filter-requested", { workId: text.id, segmentKey: "s3" });
 			store.SetCatalogue([single]);

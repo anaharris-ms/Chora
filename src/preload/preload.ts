@@ -4,7 +4,7 @@ import type { ModelSelection, ProviderId, ProviderOption } from "../shared/chat/
 import type { SelectionAction } from "../shared/library/SelectionTypes.js";
 import type { LibraryText, LibraryTextSummary, SourceNotice } from "../shared/library/LibraryTypes.js";
 import type { Dream } from "../shared/dreams/DreamTypes.js";
-import type { PatternRecord } from "../shared/patterns/PatternTypes.js";
+import type { DeleteIdeaCommand, IdeaDiscoveryRequest, IdeaDiscoverySuggestion, IdeaRecord, SaveIdeaCommand } from "../shared/ideas/IdeaTypes.js";
 import { IPC_CHANNELS } from "../shared/contracts/IpcChannels.js";
 import type { ApiSubscription, ChoraApi, FormattingAction } from "../shared/contracts/ChoraApi.js";
 import type { LookupBounds, LookupCommand, LookupState } from "../shared/library/LookupTypes.js";
@@ -181,11 +181,34 @@ async function GetSourceNotice(workId: string): Promise<SourceNotice>
 	return result as SourceNotice;
 }
 
-async function ListPatterns(workId: string): Promise<PatternRecord[]>
+// Lists durable Ideas through the isolated renderer bridge.
+async function ListIdeas(workId: string): Promise<IdeaRecord[]>
 {
-	const result = await ipcRenderer.invoke(IPC_CHANNELS.listPatterns, workId);
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.listIdeas, workId);
 
-	return result as PatternRecord[];
+	return result as IdeaRecord[];
+}
+
+// Discovers related existing Signals through the isolated renderer bridge.
+async function DiscoverIdeaSignals(request: IdeaDiscoveryRequest): Promise<IdeaDiscoverySuggestion[]>
+{
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.discoverIdeaSignals, request);
+
+	return result as IdeaDiscoverySuggestion[];
+}
+
+// Saves reader-editable Idea data through the isolated renderer bridge.
+async function SaveIdea(command: SaveIdeaCommand): Promise<IdeaRecord>
+{
+	const result = await ipcRenderer.invoke(IPC_CHANNELS.saveIdea, command);
+
+	return result as IdeaRecord;
+}
+
+// Deletes one work-owned Idea through the isolated renderer bridge.
+async function DeleteIdea(command: DeleteIdeaCommand): Promise<void>
+{
+	await ipcRenderer.invoke(IPC_CHANNELS.deleteIdea, command);
 }
 
 async function SaveDream(dream: Dream): Promise<Dream>
@@ -238,7 +261,10 @@ const api: ChoraApi = {
 	GetConfiguredProvider,
 	GetProviderOptions,
 	GetSourceNotice,
-	ListPatterns,
+	ListIdeas,
+	DiscoverIdeaSignals,
+	SaveIdea,
+	DeleteIdea,
 	SaveDream,
 	DeleteDream,
 	ListDreams,
